@@ -1,9 +1,10 @@
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler
 from settings import AppSettings
 import requests
+import logging
 
 class TelegramBot:
-    def __init__(self, settings: AppSettings):
+    def __init__(self, settings: AppSettings, logger: logging.Logger):
         self.token = settings.telegram.bot_token
         self.chat_id = settings.telegram.chat_id
         self.updater = None

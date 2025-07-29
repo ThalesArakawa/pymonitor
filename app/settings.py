@@ -63,7 +63,7 @@ class AppSettings(BaseSettings):
             },
             'root': {
                 'level': self.log_level,
-                'handlers': ['console'],
+                'handlers': ['file', 'stdout'],
             },
         }
 
