@@ -9,6 +9,7 @@ class TelegramBot:
         self.chat_id = settings.telegram.chat_id
         self.updater = None
         self.dispatcher = None
+        self.logger = logger
 
     def setup(self):
         self.updater = Updater(self.token)
@@ -17,7 +18,10 @@ class TelegramBot:
     def send_message(self, text: str):
         url = f'https://api.telegram.org/bot{self.token}/sendMessage'
         data = {'chat_id': self.chat_id, 'text': text}
-        requests.post(url, data=data)
+        try:
+            requests.post(url, data=data)
+        except requests.RequestException as e:
+            self.logger.error(f"Failed to send message: {e}")
 
     def start(self):
         self.updater.start_polling()

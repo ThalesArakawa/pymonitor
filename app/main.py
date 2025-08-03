@@ -10,11 +10,13 @@ def main():
     logger = get_logger(settings.log_level)
     telegram_bot = TelegramBot(settings=settings, logger=logger)
     monitor = WindowsMonitor(telegram_bot=telegram_bot, logger=logger)
+    logger.info("Available Features to Monitoring...")
+    to_monitor = monitor.setup()
     logger.info("Starting Windows Monitor...")
     while True:
         time.sleep(settings.check_interval)
         logger.debug("Checking system status...")
-        monitor.system_status()
+        monitor.system_status(to_monitor)
 
 if __name__ == "__main__":
     main()
