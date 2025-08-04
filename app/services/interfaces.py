@@ -20,7 +20,7 @@ class TelegramInterface:
         self.monitor = get_monitor()
         self.application = Application.builder().token(self._token).build()
 
-    async def start(self) -> None:
+    async def listen(self) -> None:
         self.application.add_handler(CommandHandler("status", self.get_status))
         await self.application.initialize()
         await self.application.start()

@@ -28,4 +28,4 @@ class PyAgent:
         
 
     async def passive_monitoring(self):
-        print(f"{self.name} is passively monitoring...")
+        await self.messager.listen()

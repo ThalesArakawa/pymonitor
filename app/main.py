@@ -16,7 +16,7 @@ async def main() -> None:
 
     await asyncio.gather(
         pyagent.active_monitoring(),
-        # pyagent.passive_monitoring()
+        pyagent.passive_monitoring()
     )
     
     # logger.info("Starting Windows Monitor...")

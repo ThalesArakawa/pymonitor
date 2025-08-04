@@ -17,14 +17,11 @@ class Messenger:
             except Exception as e:
                 self.logger.error(f"Failed to send message via {interface.__class__.__name__}: {e}")
     
-    async def receive_message(self):
-        if update.message:
-            self.logger.info(f"Received message: {update.message.text}")
-            # Process the message as needed
-            context.bot.send_message(chat_id=update.effective_chat.id, text="Message received.")
-        else:
-            self.logger.warning("Received an update without a message.")
-
+    async def listen(self):
+        asyncio.gather(
+            *[interface.listen() for interface in self.interfaces.values()]
+        )
+        
 @cache
 def get_messenger() -> Messenger:
     settings = get_settings()
