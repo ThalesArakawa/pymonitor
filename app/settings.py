@@ -27,7 +27,7 @@ class AppSettings(BaseSettings):
     log_level: LogLevel = Field('DEBUG', frozen=True)
     log_format: Optional[str] = Field('%(asctime)s - %(name)s - %(levelname)s - %(message)s', frozen=True)
     log_date_format: Optional[str] = Field('%Y-%m-%d %H:%M:%S', frozen=True)
-    check_interval: Optional[int] = Field(5, description="Interval in seconds to check system status")
+    check_interval: Optional[int] = Field(10, description="Interval in seconds to check system status")
 
     @computed_field
     @property
