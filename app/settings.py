@@ -5,6 +5,7 @@ from functools import cache
 
 type Env = Literal['test', 'dev', 'prod']
 type LogLevel = Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+type MonitoringMode = Literal['active', 'passive', 'both']
 
 class TelegramSettings(BaseSettings):
     bot_token: str
@@ -16,7 +17,7 @@ class AppSettings(BaseSettings):
         env_file='.env',
         case_sensitive=False,
         extra='ignore',
-        env_prefix='TESTE__',
+        env_prefix='PYMONITOR__',
         env_nested_delimiter='__',
         nested_model_default_partial_update=True,
     )
@@ -27,7 +28,7 @@ class AppSettings(BaseSettings):
     log_level: LogLevel = Field('DEBUG', frozen=True)
     log_format: Optional[str] = Field('%(asctime)s - %(name)s - %(levelname)s - %(message)s', frozen=True)
     log_date_format: Optional[str] = Field('%Y-%m-%d %H:%M:%S', frozen=True)
-    check_interval: Optional[int] = Field(10, description="Interval in seconds to check system status")
+    check_interval: Optional[int] = Field(300, description="Interval in seconds to check system status")
 
     @computed_field
     @property

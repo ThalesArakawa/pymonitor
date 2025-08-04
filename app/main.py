@@ -1,7 +1,4 @@
-import time
-from telegram.ext import Updater, InlineQueryHandler, CommandHandler
-from services.monitor import MonitoringService
-from services.telegram_interface import TelegramInterface
+from services.pyagent import PyAgent
 from services.log import get_logger
 from settings import get_settings
 import asyncio
@@ -15,27 +12,11 @@ def start_up() -> None:
 
 
 async def main() -> None:
-    settings, logger = start_up()
+    pyagent = PyAgent()
 
-    monitor = MonitoringService(
-        logger=logger,
-    )
-
-    telegram_bot = TelegramInterface(
-        token=settings.telegram.bot_token,
-        chat_id=settings.telegram.chat_id,
-        monitor=monitor,
-        logger=logger,
-    )
-
-    logger.info("Available Features to Monitoring...")
-    monitor.setup()
-    
-    telegram_bot.setup()
-    await telegram_bot.start()
     await asyncio.gather(
-        telegram_bot.application.updater.start_polling(),
-        telegram_bot.send_html_message("Periodic Update"),
+        pyagent.active_monitoring(),
+        # pyagent.passive_monitoring()
     )
     
     # logger.info("Starting Windows Monitor...")

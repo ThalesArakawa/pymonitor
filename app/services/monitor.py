@@ -1,9 +1,11 @@
 import psutil
-import logging
-from .types import MonitoringMessage
+from .log import get_logger
+from logging import Logger
+from .custom_types import MonitoringMessage
+from functools import cache
 
 class MonitoringService:
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: Logger):
         self.logger = logger
 
         self.locked_status = None
@@ -106,3 +108,9 @@ class MonitoringService:
                 setattr(self, method_name.replace('check_', ''), result)
             
         return methods_results
+
+@cache
+def get_monitor() -> MonitoringService:
+    monitor = MonitoringService(get_logger())
+    monitor.setup()
+    return monitor
