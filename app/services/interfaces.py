@@ -19,12 +19,21 @@ class TelegramInterface:
         self.logger = get_logger()
         self.monitor = get_monitor()
         self.application = Application.builder().token(self._token).build()
+        self.connected = False
 
     async def listen(self) -> None:
         self.application.add_handler(CommandHandler("status", self.get_status))
-        await self.application.initialize()
-        await self.application.start()
-        await self.application.updater.start_polling()
+        self.application.add_handler(CommandHandler("photo", self.get_photo))
+        while not self.connected:
+            try:
+                await self.application.initialize()
+                await self.application.start()
+                self.connected = True
+                await self.application.updater.start_polling()
+            except Exception as e:
+                self.logger.error(f'Failed to connect to Telegram {e}')
+                self.connected = False
+                await asyncio.sleep(360)
       
     async def get_status(self, update, context):
         results = self.monitor.system_status()
@@ -37,6 +46,13 @@ class TelegramInterface:
         
         await update.message.reply_html(html_response)
     
+    async def get_photo(self, update, context):
+        photo = self.monitor.get_photo()
+        if not photo:
+            await update.message.reply_text("No photo available.")
+            return
+        await update.message.reply_photo(photo)
+    
     async def send_message(self, results):
         html_response = f"<b>System Status:</b>\n\n"
         c = 0
@@ -46,7 +62,7 @@ class TelegramInterface:
             else:
                 html_response += f"<b>{result.title}</b>\n{result.content}\n"
         if self.application:
-            self.logger.debug(f"Periodic Update: Sending HTML message to Telegram.{c} Periodic Update: Sending HTML message to Telegram.")
+            self.logger.debug(f"Periodic Update: Sending HTML message to Telegram.")
             await self.application.bot.send_message(
                 chat_id=self._chat_id,
                 text=html_response,

@@ -11,19 +11,36 @@ class PyAgent:
         self.messager = get_messenger()
         self.settings = get_settings()
         self.logger = get_logger()
+        self.monitor_result = None
 
     async def active_monitoring(self):
         self.logger.debug("Active monitoring started.")
         while True:
+            send = False
+            count_diff = 0
             await asyncio.sleep(5)
             results = self.monitor.system_status()
-            for result in results:
-                if result.ok_status is not None:
-                    self.logger.info(f"{result.title}: {result.content}")
+            if not self.monitor_result:
+                send = True
+            else:
+                for result, old_result in zip(results, self.monitor_result):
+                    print(result.ok_status, old_result.ok_status)
+                    if result.ok_status != old_result.ok_status:
+                        self.logger.debug(f"{result.title} status changed from {old_result.ok_status} to {result.ok_status}")
+                        count_diff += 1
+                if count_diff > 0:
+                    send = True
                 else:
-                    self.logger.warning(f"{result.title}: {result.content}")
-            
-            await self.messager.send_message(results)
+                    send = False
+            if send:
+                self.monitor_result = results
+                for result in results:
+                    if result.ok_status is not None:
+                        self.logger.info(f"{result.title}: {result.content}")
+                    else:
+                        self.logger.warning(f"{result.title}: {result.content}")
+                
+                await self.messager.send_message(results)
             self.logger.debug("Active monitoring completed. Waiting for next cycle.")
         
 

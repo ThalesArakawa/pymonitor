@@ -3,6 +3,7 @@ from .log import get_logger
 from logging import Logger
 from .custom_types import MonitoringMessage
 from functools import cache
+import cv2
 
 class MonitoringService:
     def __init__(self, logger: Logger):
@@ -103,11 +104,37 @@ class MonitoringService:
             method = getattr(self, method_name)
             result = method()
             methods_results.append(result)
-            if result != getattr(self, method_name.replace('check_', '')):
-                self.logger.debug(f"{method_name.replace('check_', '').capitalize()} status changed from {getattr(self, method_name.replace('check_', ''))} to {result}")
-                setattr(self, method_name.replace('check_', ''), result)
+            setattr(self, method_name.replace('check_', ''), result)
             
         return methods_results
+
+    def get_photo(self):
+        # Initialize the webcam (0 represents the default camera)
+        cap = cv2.VideoCapture(0)
+
+        # Check if the webcam opened successfully
+        if not cap.isOpened():
+            self.logger.error("Error: Could not open webcam.")
+            return None
+
+        # Capture a single frame
+        ret, frame = cap.read()
+        cap.release()
+        # Check if the frame was captured successfully
+        if ret:
+            # Display the captured frame (optional)
+            is_success, buffer = cv2.imencode(".jpg", frame)
+            if not is_success:
+                self.logger.error("Error: Could not encode image.")
+                return None
+
+            # Save the captured frame as an image file
+            return buffer.tobytes()
+
+        else:
+            self.logger.error("Error: Failed to capture frame.")
+
+        return None
 
 @cache
 def get_monitor() -> MonitoringService:
