@@ -1,6 +1,14 @@
 from pydantic import BaseModel, Field
 import datetime
 
+
+class ListMonitoringMessage(BaseModel):
+    """
+    Represents a list of monitoring messages.
+    """
+    messages: list['MonitoringMessage']
+
+
 class MonitoringMessage(BaseModel):
     """
     Represents a message to be sent to the Telegram bot.

@@ -12,6 +12,18 @@ import asyncio
 from .monitor import get_monitor
 from .log import get_logger
 
+def format_message(results, subtitle: str = ""):
+    html_response = f"<b>System Status:</b>\n{subtitle}\n\n"
+    for result in results:
+        if result.ok_status is not None:
+            if result.ok_status:
+                html_response += f'<b>🟢{result.title}</b>\n{result.content}\n'
+            else:
+                html_response += f'<b>🔴{result.title}</b>\n{result.content}\n'
+        else:
+            html_response += f"<b>⚪{result.title}</b>\n{result.content}\n"
+    return html_response
+
 class TelegramInterface:
     def __init__(self):
         self._token = get_settings().telegram.bot_token
@@ -20,10 +32,12 @@ class TelegramInterface:
         self.monitor = get_monitor()
         self.application = Application.builder().token(self._token).build()
         self.connected = False
+        self.photo_mode = get_settings().monitoring.photo_mode
 
     async def listen(self) -> None:
         self.application.add_handler(CommandHandler("status", self.get_status))
-        self.application.add_handler(CommandHandler("photo", self.get_photo))
+        if self.photo_mode:
+            self.application.add_handler(CommandHandler("photo", self.get_photo))
         while not self.connected:
             try:
                 await self.application.initialize()
@@ -37,13 +51,7 @@ class TelegramInterface:
       
     async def get_status(self, update, context):
         results = self.monitor.system_status()
-        html_response = "<b>System Status:</b>\n<b>Response Update</b>\n\n"
-        for result in results:
-            if result.ok_status is not None:
-                html_response += f"<b>{result.title}</b>\n{result.content}\n"
-            else:
-                html_response += f"<b>{result.title}</b>\n{result.content}\n"
-        
+        html_response = format_message(results, "Response from system status check:")
         await update.message.reply_html(html_response)
     
     async def get_photo(self, update, context):
@@ -56,11 +64,7 @@ class TelegramInterface:
     async def send_message(self, results):
         html_response = f"<b>System Status:</b>\n\n"
         c = 0
-        for result in results:
-            if result.ok_status is not None:
-                html_response += f"<b>{result.title}</b>\n{result.content}\n"
-            else:
-                html_response += f"<b>{result.title}</b>\n{result.content}\n"
+        html_response = format_message(results, "Periodic Update:")
         if self.application:
             self.logger.debug(f"Periodic Update: Sending HTML message to Telegram.")
             await self.application.bot.send_message(

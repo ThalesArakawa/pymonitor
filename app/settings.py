@@ -12,6 +12,14 @@ class TelegramSettings(BaseSettings):
     chat_id: str
 
 
+class MonitoringSettings(BaseSettings):
+    photo_mode: bool = False
+    mode: MonitoringMode = 'both'  # active, passive, or both   
+    type: Literal['system', 'application'] = 'system'
+    check_interval: Optional[int] = Field(5, description="Interval in seconds to check system status")
+    active_threshold: int = 3  # number of changes to trigger notification
+
+
 class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file='.env',
@@ -24,11 +32,12 @@ class AppSettings(BaseSettings):
 
     env: Env = 'test'
     telegram: TelegramSettings
-
+    monitoring: MonitoringSettings = Field(default_factory=MonitoringSettings)
     log_level: LogLevel = Field('DEBUG', frozen=True)
-    log_format: Optional[str] = Field('%(asctime)s - %(name)s - %(levelname)s - %(message)s', frozen=True)
+    log_format: Optional[str] = Field('%(asctime)s | %(name)s | %(levelname)s | %(message)s', frozen=True)
     log_date_format: Optional[str] = Field('%Y-%m-%d %H:%M:%S', frozen=True)
-    check_interval: Optional[int] = Field(300, description="Interval in seconds to check system status")
+    
+    
 
     @computed_field
     @property

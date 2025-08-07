@@ -8,10 +8,16 @@ from .log import get_logger
 class PyAgent:
     def __init__(self):
         self.monitor = get_monitor()
-        self.messager = get_messenger()
+        self.messenger = get_messenger()
         self.settings = get_settings()
         self.logger = get_logger()
         self.monitor_result = None
+
+    async def start(self):
+        await asyncio.gather(
+            self.active_monitoring(),
+            self.passive_monitoring()
+        )
 
     async def active_monitoring(self):
         self.logger.debug("Active monitoring started.")
@@ -24,7 +30,6 @@ class PyAgent:
                 send = True
             else:
                 for result, old_result in zip(results, self.monitor_result):
-                    print(result.ok_status, old_result.ok_status)
                     if result.ok_status != old_result.ok_status:
                         self.logger.debug(f"{result.title} status changed from {old_result.ok_status} to {result.ok_status}")
                         count_diff += 1
@@ -40,9 +45,9 @@ class PyAgent:
                     else:
                         self.logger.warning(f"{result.title}: {result.content}")
                 
-                await self.messager.send_message(results)
+                await self.messenger.send_message(results)
             self.logger.debug("Active monitoring completed. Waiting for next cycle.")
         
 
     async def passive_monitoring(self):
-        await self.messager.listen()
+        await self.messenger.listen()

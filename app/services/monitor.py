@@ -1,7 +1,7 @@
 import psutil
 from .log import get_logger
 from logging import Logger
-from .custom_types import MonitoringMessage
+from .custom_types import MonitoringMessage, ListMonitoringMessage
 from functools import cache
 import cv2
 
@@ -97,7 +97,7 @@ class MonitoringService:
         self.valid_methods = valid_methods
 
 
-    def system_status(self) -> list:
+    def system_status(self) -> ListMonitoringMessage:
         methods_results = []
         for method_name in self.valid_methods:
             self.logger.debug(f"Checking {method_name.replace('check_', '')} status...")
