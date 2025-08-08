@@ -1,12 +1,9 @@
 from pydantic import BaseModel, Field
+from typing import List
 import datetime
 
 
-class ListMonitoringMessage(BaseModel):
-    """
-    Represents a list of monitoring messages.
-    """
-    messages: list['MonitoringMessage']
+type ListMonitoringMessage = List['MonitoringMessage']
 
 
 class MonitoringMessage(BaseModel):
@@ -16,4 +13,4 @@ class MonitoringMessage(BaseModel):
     title: str = Field(..., description="Title of the message")
     content: str = Field(..., description="Content of the message")
     ok_status: bool | None = Field(..., description="Status of the monitoring check (True for OK/False for NOT OK)")
-    timestamp: datetime.datetime = Field(default_factory=datetime.datetime.now, description="Timestamp of the monitoring check")
+    value: str = None

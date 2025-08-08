@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import computed_field, Field
 from typing import Literal, Optional
 from functools import cache
+import os
 
 type Env = Literal['test', 'dev', 'prod']
 type LogLevel = Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
@@ -13,11 +14,9 @@ class TelegramSettings(BaseSettings):
 
 
 class MonitoringSettings(BaseSettings):
-    photo_mode: bool = False
-    mode: MonitoringMode = 'both'  # active, passive, or both   
-    type: Literal['system', 'application'] = 'system'
+    photo_mode: bool = Field(False, description="Enable photo monitoring")
+    mode: MonitoringMode = Field('both', description="Monitoring Mode", frozen=True)  # active, passive, or both   
     check_interval: Optional[int] = Field(5, description="Interval in seconds to check system status")
-    active_threshold: int = 3  # number of changes to trigger notification
 
 
 class AppSettings(BaseSettings):
@@ -32,12 +31,21 @@ class AppSettings(BaseSettings):
 
     env: Env = 'test'
     telegram: TelegramSettings
-    monitoring: MonitoringSettings = Field(default_factory=MonitoringSettings)
+    monitoring: MonitoringSettings = MonitoringSettings()
     log_level: LogLevel = Field('DEBUG', frozen=True)
     log_format: Optional[str] = Field('%(asctime)s | %(name)s | %(levelname)s | %(message)s', frozen=True)
     log_date_format: Optional[str] = Field('%Y-%m-%d %H:%M:%S', frozen=True)
     
-    
+    @computed_field
+    @property
+    def base_path(self) -> str:
+        return os.path.dirname(os.path.abspath(__file__))
+
+    @computed_field
+    @property
+    def assets_path(self) -> str:
+        return os.path.join(self.base_path, 'assets')
+
 
     @computed_field
     @property

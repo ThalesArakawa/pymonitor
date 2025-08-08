@@ -3,6 +3,30 @@ from settings import get_settings
 from .monitor import get_monitor
 import asyncio
 from .log import get_logger
+from .custom_types import ListMonitoringMessage
+from playsound import playsound
+from pathlib import Path
+
+def diff_states(result: ListMonitoringMessage, old_result: ListMonitoringMessage | None)->bool:
+    settings = get_settings()
+    status = False
+    if old_result is None:
+        return True
+    for msg, old_msg in zip(result, old_result if old_result else []):
+        print(f"Comparing: {msg} with {old_msg}")
+        if msg != old_msg:
+            # return True
+            status = True | status
+            if msg.title == 'Battery Status' and msg.ok_status == False:
+                playsound(Path(settings.assets_path) / 'Por favor, reco.mp3')
+            if msg.title == 'Battery Status' and msg.ok_status == True:
+                playsound(Path(settings.assets_path) / 'Carregador cone.mp3')
+            # if msg.title == 'System Locked Status' and msg.ok_status == False:
+            #     playsound(Path(settings.assets_path) / 'Por favor, reco.mp3')
+    if status:
+        return True
+    return False
+
 
 
 class PyAgent:
@@ -22,31 +46,14 @@ class PyAgent:
     async def active_monitoring(self):
         self.logger.debug("Active monitoring started.")
         while True:
-            send = False
-            count_diff = 0
-            await asyncio.sleep(5)
-            results = self.monitor.system_status()
-            if not self.monitor_result:
-                send = True
-            else:
-                for result, old_result in zip(results, self.monitor_result):
-                    if result.ok_status != old_result.ok_status:
-                        self.logger.debug(f"{result.title} status changed from {old_result.ok_status} to {result.ok_status}")
-                        count_diff += 1
-                if count_diff > 0:
-                    send = True
-                else:
-                    send = False
+            result = self.monitor.system_status()
+            send = diff_states(result, self.monitor_result)
             if send:
-                self.monitor_result = results
-                for result in results:
-                    if result.ok_status is not None:
-                        self.logger.info(f"{result.title}: {result.content}")
-                    else:
-                        self.logger.warning(f"{result.title}: {result.content}")
-                
-                await self.messenger.send_message(results)
+                self.monitor_result = result
+                await self.messenger.send_message(result)
             self.logger.debug("Active monitoring completed. Waiting for next cycle.")
+            await asyncio.sleep(5)
+            
         
 
     async def passive_monitoring(self):
