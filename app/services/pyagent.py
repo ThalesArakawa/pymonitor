@@ -6,21 +6,29 @@ from .log import get_logger
 from .custom_types import ListMonitoringMessage
 from playsound import playsound
 from pathlib import Path
+import logging
 
-def diff_states(result: ListMonitoringMessage, old_result: ListMonitoringMessage | None)->bool:
+async def diff_states(result: ListMonitoringMessage, old_result: ListMonitoringMessage | None, logger: logging.Logger)->bool:
     settings = get_settings()
     status = False
     if old_result is None:
         return True
     for msg, old_msg in zip(result, old_result if old_result else []):
-        print(f"Comparing: {msg} with {old_msg}")
         if msg != old_msg:
             # return True
             status = True | status
-            if msg.title == 'Battery Status' and msg.ok_status == False:
-                playsound(Path(settings.assets_path) / 'Por favor, reco.mp3')
-            if msg.title == 'Battery Status' and msg.ok_status == True:
-                playsound(Path(settings.assets_path) / 'Carregador cone.mp3')
+            if msg.title == 'System Locked Status' and msg.ok_status == False:
+                try:
+                    logger.debug(f"Playing sound {Path(settings.assets_path)}")
+                    await playsound(str(Path(settings.assets_path) / 'disconnected.mp3'), block=False)
+                except Exception as e:
+                    logger.error(f"Error playing sound {str(Path(settings.root_path) / 'assets' / 'disconnected.mp3')}: {e}")
+            if msg.title == 'System Locked Status' and msg.ok_status == True:
+                try:
+                    logger.debug(f"Playing sound {Path(settings.assets_path)}")
+                    await playsound(str(Path(settings.assets_path) / 'connected.mp3'), block=False)
+                except Exception as e:
+                    logger.error(f"Error playing sound{str(Path(settings.root_path) / 'assets' / 'disconnected.mp3')}: {e}")
             # if msg.title == 'System Locked Status' and msg.ok_status == False:
             #     playsound(Path(settings.assets_path) / 'Por favor, reco.mp3')
     if status:
@@ -47,7 +55,7 @@ class PyAgent:
         self.logger.debug("Active monitoring started.")
         while True:
             result = self.monitor.system_status()
-            send = diff_states(result, self.monitor_result)
+            send = await diff_states(result, self.monitor_result, self.logger)
             if send:
                 self.monitor_result = result
                 await self.messenger.send_message(result)

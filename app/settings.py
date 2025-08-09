@@ -45,6 +45,11 @@ class AppSettings(BaseSettings):
     @property
     def assets_path(self) -> str:
         return os.path.join(self.base_path, 'assets')
+    
+    @computed_field
+    @property
+    def root_path(self) -> str:
+        return os.path.dirname(self.base_path)
 
 
     @computed_field
