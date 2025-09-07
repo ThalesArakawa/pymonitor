@@ -17,16 +17,16 @@ async def diff_states(result: ListMonitoringMessage, old_result: ListMonitoringM
         if msg != old_msg:
             # return True
             status = True | status
-            if msg.title == 'System Locked Status' and msg.ok_status == False:
+            if msg.title == 'Charger Status' and msg.ok_status == False:
                 try:
                     logger.debug(f"Playing sound {Path(settings.assets_path)}")
-                    await playsound(str(Path(settings.assets_path) / 'disconnected.mp3'), block=False)
+                    await playsound(str(Path(settings.root_path) / 'assets' / 'disconnected.mp3'), block=False)
                 except Exception as e:
                     logger.error(f"Error playing sound {str(Path(settings.root_path) / 'assets' / 'disconnected.mp3')}: {e}")
-            if msg.title == 'System Locked Status' and msg.ok_status == True:
+            if msg.title == 'Charger Status' and msg.ok_status == True:
                 try:
                     logger.debug(f"Playing sound {Path(settings.assets_path)}")
-                    await playsound(str(Path(settings.assets_path) / 'connected.mp3'), block=False)
+                    await playsound(str(Path(settings.root_path) / 'assets' / 'connected.mp3'), block=False)
                 except Exception as e:
                     logger.error(f"Error playing sound{str(Path(settings.root_path) / 'assets' / 'disconnected.mp3')}: {e}")
             # if msg.title == 'System Locked Status' and msg.ok_status == False:
@@ -55,12 +55,12 @@ class PyAgent:
         self.logger.debug("Active monitoring started.")
         while True:
             result = self.monitor.system_status()
-            send = await diff_states(result, self.monitor_result, self.logger)
-            if send:
+            update_status = await diff_states(result, self.monitor_result, self.logger)
+            if update_status:
                 self.monitor_result = result
                 await self.messenger.send_message(result)
             self.logger.debug("Active monitoring completed. Waiting for next cycle.")
-            await asyncio.sleep(5)
+            await asyncio.sleep(self.settings.monitoring.check_interval)
             
         
 

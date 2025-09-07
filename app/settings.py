@@ -15,8 +15,8 @@ class TelegramSettings(BaseSettings):
 
 class MonitoringSettings(BaseSettings):
     photo_mode: bool = Field(False, description="Enable photo monitoring")
-    mode: MonitoringMode = Field('both', description="Monitoring Mode", frozen=True)  # active, passive, or both   
-    check_interval: Optional[int] = Field(5, description="Interval in seconds to check system status")
+    mode: MonitoringMode = Field('both', description="Monitoring Mode")  # active, passive, or both   
+    check_interval: int = Field(5, description="Interval in seconds to check system status")
 
 
 class AppSettings(BaseSettings):
