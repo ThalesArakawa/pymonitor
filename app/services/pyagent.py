@@ -14,7 +14,7 @@ async def diff_states(result: ListMonitoringMessage, old_result: ListMonitoringM
     if old_result is None:
         return True
     for msg, old_msg in zip(result, old_result if old_result else []):
-        if msg != old_msg:
+        if msg.ok_status != old_msg.ok_status:
             # return True
             status = True | status
             if msg.title == 'Charger Status' and msg.ok_status == False:

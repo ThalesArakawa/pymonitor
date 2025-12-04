@@ -36,6 +36,7 @@ class TelegramInterface:
 
     async def listen(self) -> None:
         self.application.add_handler(CommandHandler("status", self.get_status))
+        self.application.add_handler(CommandHandler("log", self.get_log))
         if self.photo_mode:
             self.application.add_handler(CommandHandler("photo", self.get_photo))
         while not self.connected:
@@ -56,6 +57,13 @@ class TelegramInterface:
     
     async def get_photo(self, update, context):
         photo = self.monitor.get_photo()
+        if not photo:
+            await update.message.reply_text("No photo available.")
+            return
+        await update.message.reply_photo(photo)
+    
+    async def get_log(self, update, context):
+        photo = self.monitor.get_log()
         if not photo:
             await update.message.reply_text("No photo available.")
             return

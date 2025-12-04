@@ -149,6 +149,13 @@ class MonitoringService:
 
         return None
 
+    def get_log(self):
+        try:
+            with open("app.log", "rb") as f:
+                return f.read()
+        except Exception as e:
+            self.logger.error(f"Error reading log file: {e}")
+            return None
 
 @cache
 def get_monitor() -> MonitoringService:
