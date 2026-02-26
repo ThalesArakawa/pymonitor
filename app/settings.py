@@ -3,6 +3,7 @@ from pydantic import computed_field, Field
 from typing import Literal, Optional
 from functools import cache
 import os
+import logging
 
 type Env = Literal['test', 'dev', 'prod']
 type LogLevel = Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
@@ -78,10 +79,13 @@ class AppSettings(BaseSettings):
                     'level': self.log_level,
                 },
                 'file': {
-                    'class': 'logging.FileHandler',
+                    'class': 'logging.handlers.RotatingFileHandler',
                     'filename': 'app.log',
                     'formatter': 'default',
                     'level': self.log_level,
+                    'maxBytes': 10485760,  # 10MB
+                    'backupCount': 5,
+                    'encoding': 'utf8',
                 },
             },
             'root': {
@@ -89,6 +93,15 @@ class AppSettings(BaseSettings):
                 'handlers': ['file', 'stdout'],
             },
         }
+
+    def model_post_init(self, context):
+        logging.config.dictConfig(self.logging_config)
+        logging.getLogger('urllib3').setLevel(logging.INFO)
+        logging.getLogger('httpcore').setLevel(logging.INFO)
+        logging.getLogger('telegram').setLevel(logging.INFO)
+        logging.getLogger('asyncio').setLevel(logging.INFO)
+        logging.getLogger('httpx').setLevel(logging.INFO)
+    
 
 @cache
 def get_settings() -> AppSettings:
