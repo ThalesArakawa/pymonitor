@@ -1,68 +1,34 @@
-from .messenger import get_messenger
-from settings import get_settings
-from .monitor import get_monitor
+from .messenger import MessengerService
+from .metrics import MetricsService
+from .player import AudioService
+from .state_manager import StateManager
 import asyncio
 from .log import get_logger
-from .custom_types import ListMonitoringMessage
-from playsound import playsound
-from pathlib import Path
-import logging
-
-async def diff_states(result: ListMonitoringMessage, old_result: ListMonitoringMessage | None, logger: logging.Logger)->bool:
-    settings = get_settings()
-    status = False
-    if old_result is None:
-        return True
-    for msg, old_msg in zip(result, old_result if old_result else []):
-        if msg.ok_status != old_msg.ok_status:
-            # return True
-            status = True | status
-            if msg.title == 'Charger Status' and msg.ok_status == False:
-                try:
-                    logger.debug(f"Playing sound {Path(settings.assets_path)}")
-                    await playsound(str(Path(settings.root_path) / 'assets' / 'disconnected.mp3'), block=False)
-                except Exception as e:
-                    logger.error(f"Error playing sound {str(Path(settings.root_path) / 'assets' / 'disconnected.mp3')}: {e}")
-            if msg.title == 'Charger Status' and msg.ok_status == True:
-                try:
-                    logger.debug(f"Playing sound {Path(settings.assets_path)}")
-                    await playsound(str(Path(settings.root_path) / 'assets' / 'connected.mp3'), block=False)
-                except Exception as e:
-                    logger.error(f"Error playing sound{str(Path(settings.root_path) / 'assets' / 'disconnected.mp3')}: {e}")
-            # if msg.title == 'System Locked Status' and msg.ok_status == False:
-            #     playsound(Path(settings.assets_path) / 'Por favor, reco.mp3')
-    if status:
-        return True
-    return False
-
 
 
 class PyAgent:
     def __init__(self):
-        self.monitor = get_monitor()
-        self.messenger = get_messenger()
-        self.settings = get_settings()
         self.logger = get_logger()
-        self.monitor_result = None
+        self.event_queue = asyncio.Queue()
+        self.audio_queue = asyncio.Queue()
+        self.state_tracker = StateManager()
+        self.messenger_service = MessengerService(
+            queue=self.event_queue, state=self.state_tracker
+        )
+        self.metrics_service = MetricsService(
+            queue=self.event_queue,
+            audio_queue=self.audio_queue,
+            state=self.state_tracker,
+        )
+        self.audio_service = AudioService(
+            queue=self.audio_queue, state=self.state_tracker
+        )
+        self._initialize_services()
+
+    def _initialize_services(self):
+        self.messenger_service = asyncio.create_task(self.messenger_service.start())
+        self.audio_service = asyncio.create_task(self.audio_service.start())
+        self.metrics_service = asyncio.create_task(self.metrics_service.start())
 
     async def start(self):
-        await asyncio.gather(
-            self.active_monitoring(),
-            self.passive_monitoring()
-        )
-
-    async def active_monitoring(self):
-        self.logger.debug("Active monitoring started.")
-        while True:
-            result = self.monitor.system_status()
-            update_status = await diff_states(result, self.monitor_result, self.logger)
-            if update_status:
-                self.monitor_result = result
-                await self.messenger.send_message(result)
-            self.logger.debug("Active monitoring completed. Waiting for next cycle.")
-            await asyncio.sleep(self.settings.monitoring.check_interval)
-            
-        
-
-    async def passive_monitoring(self):
-        await self.messenger.listen()
+        await asyncio.gather(self.messenger_service, self.metrics_service)

@@ -1,6 +1,5 @@
-import logging.config
-from settings import get_settings
 from functools import cache
+import logging
 
 LOG_NAME = 'pymonitor'
 
