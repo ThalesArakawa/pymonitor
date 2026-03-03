@@ -1,44 +1,45 @@
-from telegram.ext import (
-    Application,
-    ChatMemberHandler,
-    CommandHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-)
-from settings import get_settings
+from telegram.ext import Application, CommandHandler, CallbackContext
+from telegram import Update
+from ..settings import get_settings
 from functools import cache
 import asyncio
 from .log import get_logger
-from .state_manager import StateManager
-import cv2
+from .database import StateManager
+import uuid
+from datetime import datetime
+import io
+from abc import ABC
+from ..models import Message, Request
+
+from typing import List
 
 
-def format_message(results, subtitle: str = ""):
-    html_response = f""
-    for result in results:
-        if result.ok_status is not None:
-            if result.ok_status:
-                html_response += f"<b>🟢{result.title}</b>\n{result.content}\n"
-            else:
-                html_response += f"<b>🔴{result.title}</b>\n{result.content}\n"
-        else:
-            html_response += f"<b>⚪{result.title}</b>\n{result.content}\n"
-    return html_response
+class MessageInterface(ABC):
+
+    @classmethod
+    async def send(self, message: Message) -> bool:
+        pass
 
 
-class TelegramInterface:
-    def __init__(self, state: StateManager):
+def format_message(message: Message):
+    if message.byte_content:
+        return message.byte_content
+    return message.content
+
+
+class TelegramInterface(MessageInterface):
+    def __init__(self, request_queue: asyncio.Queue):
+        self.request_queue = request_queue
         self._token = get_settings().telegram.bot_token
         self._chat_id = get_settings().telegram.chat_id
         self.settings = get_settings()
         self.logger = get_logger()
-        self.state = state
         self.application = Application.builder().token(self._token).build()
         self.connected = False
         self.photo_mode = get_settings().monitoring.photo_mode
 
     async def listen(self) -> None:
+        self.logger.info("Starting to listen to Telegram Interface")
         self.application.add_handler(CommandHandler("status", self.get_status))
         self.application.add_handler(CommandHandler("log", self.get_log))
         if self.photo_mode:
@@ -54,76 +55,55 @@ class TelegramInterface:
                 self.connected = False
                 await asyncio.sleep(360)
 
-    async def get_status(self, update, context):
+    async def get_status(self, update: Update, context: CallbackContext):
         self.logger.debug("Getting Status")
-        messages = []
-        state = self.state.get_all()
-        for _, message in state.items():
-            if isinstance(message, dict):
-                for _, l2_message in message.items():
-                    messages.append(l2_message)
-            else:
-                messages.append(message)
-        html_response = format_message(messages, "Response from system status check:")
-        await update.message.reply_html(html_response)
+        pass
 
-    async def get_log(self, update, context):
-        try:
-            with open(self.settings.base_path / "app.log", "rb") as f:
-                log = f.read()
-        except Exception as e:
-            self.logger.error(f"Error reading log file: {e}")
-            log = None
-        if not log:
-            await update.message.reply_text("No log available.")
-            return
-        await update.message.reply_document(log)
-
-    async def get_photo(self, update, context):
-        # Initialize the webcam (0 represents the default camera)
-        cap = cv2.VideoCapture(0)
-
-        # Check if the webcam opened successfully
-        if not cap.isOpened():
-            self.logger.error("Error: Could not open webcam.")
-            photo = None
-
-        # Capture a single frame
-        ret, frame = cap.read()
-        cap.release()
-        # Check if the frame was captured successfully
-        if ret:
-            # Display the captured frame (optional)
-            is_success, buffer = cv2.imencode(".jpg", frame)
-            if not is_success:
-                self.logger.error("Error: Could not encode image.")
-                return None
-
-            # Save the captured frame as an image file
-            photo = buffer.tobytes()
-
-        else:
-            self.logger.error("Error: Failed to capture frame.")
-
-        if not photo:
-            await update.message.reply_text("No photo available.")
-            return
-        await update.message.reply_photo(photo)
-
-    async def send_message(self, results):
-        html_response = format_message(results, "Periodic Update:")
-        if self.application:
-            self.logger.debug(f"Periodic Update: Sending HTML message to Telegram.")
-            await self.application.bot.send_message(
-                chat_id=self._chat_id,
-                text=html_response,
-                parse_mode="HTML",
+    async def get_log(self, update: Update, context: CallbackContext):
+        self.logger.info("Log requisitada via Telegram")
+        await self.request_queue.put(
+            Request(
+                request_id=str(uuid.uuid4()),
+                message="log",
+                timestamp=datetime.now(),
+                update=update,
             )
+        )
+
+    async def get_photo(self, update: Update, context: CallbackContext):
+        self.logger.info("Foto requisitada via Telegram")
+        await self.request_queue.put(
+            Request(
+                request_id=str(uuid.uuid4()),
+                message="photo",
+                timestamp=datetime.now(),
+                update=update,
+            )
+        )
+
+    async def send(self, message: Message):
+        response = format_message(message)
+        if self.application:
+            if message.type == "photo":
+                await message.recipient.message.reply_photo(response)
+            elif message.type == "doc":
+                log_file = io.BytesIO(response)
+                await message.recipient.message.reply_document(
+                    document=log_file, filename="application_log.txt"
+                )
+            else:
+                self.logger.debug(f"Periodic Update: Sending HTML message to Telegram.")
+                try:
+                    await self.application.bot.send_message(
+                        chat_id=self._chat_id,
+                        text=response,
+                        parse_mode="HTML",
+                    )
+                except Exception as e:
+                    self.logger.error(f"Erro desconhecido: {e}")
         else:
             self.logger.error("Telegram bot is not set up. Cannot send message.")
 
 
-def get_interfaces(state: dict) -> dict:
-    return {
-        "telegram": TelegramInterface(state=state),
-    }
+def get_interfaces(request_queue: asyncio.Queue) -> List[MessageInterface]:
+    return [TelegramInterface(request_queue=request_queue)]

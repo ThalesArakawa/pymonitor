@@ -1,7 +1,7 @@
 from .log import get_logger
 import asyncio
 from playsound3 import playsound
-from settings import get_settings
+from ..settings import get_settings
 
 
 class AudioService:
