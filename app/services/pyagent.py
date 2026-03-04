@@ -105,12 +105,22 @@ class PyAgent:
             for service_name in services:
                 # Stop the service
                 stop_command = ["sc", "stop", service_name]
-                subprocess.run(stop_command, check=True, capture_output=True)
+                subprocess.run(
+                    stop_command,
+                    check=True,
+                    capture_output=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
                 self.logger.info(f"{service_name} stopped.")
 
                 # Start the service
                 start_command = ["sc", "start", service_name]
-                subprocess.run(start_command, check=True, capture_output=True)
+                subprocess.run(
+                    start_command,
+                    check=True,
+                    capture_output=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
                 self.logger.info(f"{service_name} started.")
 
             return True
@@ -132,10 +142,18 @@ class PyAgent:
                 "-im",
                 self.settings.tobii.optikey_exe_name,
             ]
-            subprocess.run(kill_command, check=True, capture_output=True)
+            subprocess.run(
+                kill_command,
+                check=True,
+                capture_output=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
 
             # Open Optikey process
-            subprocess.Popen([self.settings.tobii.optikey_path])
+            subprocess.Popen(
+                [self.settings.tobii.optikey_path],
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
             self.logger.info(f"Optikey started.")
 
             return True
@@ -155,10 +173,18 @@ class PyAgent:
                 "-im",
                 self.settings.remote_access.anydesk_exe_name,
             ]
-            subprocess.run(kill_command, check=True, capture_output=True)
+            subprocess.run(
+                kill_command,
+                check=True,
+                capture_output=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
 
             # Open Anydesk process
-            subprocess.Popen([self.settings.remote_access.anydesk_path])
+            subprocess.Popen(
+                [self.settings.remote_access.anydesk_path],
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
             self.logger.info(f"Anydesk started.")
             return True
         except subprocess.CalledProcessError as e:
