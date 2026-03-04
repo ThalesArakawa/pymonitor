@@ -30,7 +30,7 @@ class AlarmService:
                 await task
                 self.tasks[resource_name] = None
                 await self.on_success(
-                    audio=self.settings.assets_path / resource_name / f"{resource_name}-ok.mp3",
+                    audio=self.settings.assets_path / f"{resource_name}-ok.mp3",
                     resource_name=resource_name,
                 )
         else:

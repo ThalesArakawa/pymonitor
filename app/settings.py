@@ -10,7 +10,6 @@ from pathlib import Path
 
 type Env = Literal["test", "dev", "prod"]
 type LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-type MonitoringMode = Literal["active", "passive", "both"]
 
 
 class TobiiSettings(BaseSettings):
@@ -45,11 +44,8 @@ class TelegramSettings(BaseSettings):
 
 class MonitoringSettings(BaseSettings):
     photo_mode: bool = Field(False, description="Enable photo monitoring")
-    mode: MonitoringMode = Field(
-        "both", description="Monitoring Mode"
-    )  # active, passive, or both
     check_interval: int = Field(
-        5, description="Interval in seconds to check system status"
+        10, description="Interval in seconds to check system status"
     )
 
 class AlarmSettings(BaseSettings):
