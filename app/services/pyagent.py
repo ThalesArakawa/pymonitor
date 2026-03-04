@@ -186,7 +186,8 @@ class PyAgent:
     async def active_monitoring(self):
         while True:
             event: Event = await self.event_queue.get()
-            response = await self.take_action(event=event)
+            if not event.status:
+                response = await self.take_action(event=event)
             message: Message = self.create_message(event=event)
 
             tasks = []
