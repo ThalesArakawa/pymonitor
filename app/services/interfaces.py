@@ -1,10 +1,8 @@
 from telegram.ext import Application, CommandHandler, CallbackContext
 from telegram import Update
 from ..settings import get_settings
-from functools import cache
 import asyncio
 from .log import get_logger
-from .database import StateManager
 import uuid
 from datetime import datetime
 import io
@@ -105,5 +103,10 @@ class TelegramInterface(MessageInterface):
             self.logger.error("Telegram bot is not set up. Cannot send message.")
 
 
+
 def get_interfaces(request_queue: asyncio.Queue) -> List[MessageInterface]:
-    return [TelegramInterface(request_queue=request_queue)]
+    interfaces = []
+    settings = get_settings()
+    if settings.use_telegram:
+        interfaces.append(TelegramInterface(request_queue=request_queue))
+    return interfaces

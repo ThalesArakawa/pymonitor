@@ -2,17 +2,15 @@ import psutil
 from .log import get_logger
 from .database import DataBaseConnector
 from ..settings import get_settings
-from .custom_types import MonitoringMessage
 import uuid
 from datetime import datetime
 import inspect
 import asyncio
-from pathlib import Path
 from ..models import Event
 
 import asyncio
 import functools
-
+import wmi
 
 def monitor_metric(resource_name, interval: float = 5.0):
     """
@@ -21,7 +19,6 @@ def monitor_metric(resource_name, interval: float = 5.0):
     """
 
     def decorator(func):
-        # O functools.wraps mantém o nome e docstring originais da sua função
         @functools.wraps(func)
         async def wrapper(self, *args, **kwargs):
             self.logger.info(
@@ -34,6 +31,7 @@ def monitor_metric(resource_name, interval: float = 5.0):
                     current_state: Event = await func(self, *args, **kwargs)
                     current_state.timestamp = datetime.now()
                     current_state.event_id = str(uuid.uuid4())
+                    current_state.resource_name = resource_name
 
                     # 2. AVAIL METRIC
                     previous_state: Event = self.state_tracker.get(resource_name)
@@ -51,7 +49,7 @@ def monitor_metric(resource_name, interval: float = 5.0):
                     self.logger.error(f"[Erro no Monitor {resource_name}]: {e}")
 
                 # 4. interval: O decorator cuida do tempo de espera
-                await asyncio.sleep(interval)
+                await asyncio.sleep(self.settings.monitoring.check_interval)
 
         # Etiquetamos o wrapper para o setup encontrar
         wrapper._is_monitor = True
@@ -193,7 +191,27 @@ class MetricsService:
             value=value,
         )
 
-    @monitor_metric(resource_name="Tobii Services", interval=60)
+    @monitor_metric(resource_name="Tobbi_Hardware", interval=60)
+    async def tobii_hardware_status(self):
+        wmi_connection = wmi.WMI()
+        devices = wmi_connection.Win32_PnPEntity()
+        current_state_ok_status = False
+        for device in devices:
+            if device.Name and "tobii" in device.Name.lower():
+                current_state_ok_status = True
+
+        if current_state_ok_status:
+            message = f"Tobii conectado ✅"
+        else:
+            message = f"Tobii desconectado!!! 🚨"
+
+        self.logger.debug(message)
+        return Event(
+            message=message,
+            status=current_state_ok_status,
+        )
+
+    @monitor_metric(resource_name="Tobii_Services", interval=60)
     async def check_tobii_status(self):
         current_state = {
             self.settings.tobii.service_name: False,

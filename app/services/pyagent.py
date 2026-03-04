@@ -1,11 +1,14 @@
 from .messenger import MessengerService
 from .database import DataBaseConnector
+from .alarm import AlarmService
 from ..settings import get_settings
 from ..models import Event, Message, Request
 import asyncio
 from .log import get_logger
 import cv2
 import aiofiles
+
+import subprocess
 
 
 class PyAgent:
@@ -19,6 +22,7 @@ class PyAgent:
         self.request_queue: asyncio.Queue = asyncio.Queue()
         self.state_tracker: DataBaseConnector | None = None
         self.messenger_service: MessengerService = messenger
+        self.alarm_service: AlarmService = AlarmService()
         self.messenger_service.initialize(queue=self.request_queue)
 
     def set_event_queue(self, queue: asyncio.Queue):
@@ -55,11 +59,6 @@ class PyAgent:
 
         return photo
 
-        # if not photo:
-        #     await update.message.reply_text("No photo available.")
-        #     return
-        # await update.message.reply_photo(photo)
-
     async def get_log(self) -> bytes:
         try:
             async with aiofiles.open(
@@ -71,11 +70,6 @@ class PyAgent:
             log = b""
 
         return log
-
-        # if not log:
-        #     await update.message.reply_text("No log available.")
-        #     return
-        # await update.message.reply_document(log)
 
     async def respond(self, request: Request):
         if request.message == "photo":
@@ -100,8 +94,91 @@ class PyAgent:
         else:
             return Message(content="Método não implementado!")
 
-    async def take_action(self, event: Event):
-        raise NotImplementedError("Necessita implementação de lógica de tomada de ação")
+    def restart_tobii_service(self, event: Event) -> bool:
+        services = [
+            self.settings.tobii.service_name,
+            self.settings.tobii.generic_name,
+            self.settings.tobii.eyetracker_name,
+        ]
+
+        try:
+            for service_name in services:
+                # Stop the service
+                stop_command = ["sc", "stop", service_name]
+                subprocess.run(stop_command, check=True, capture_output=True)
+                self.logger.info(f"{service_name} stopped.")
+
+                # Start the service
+                start_command = ["sc", "start", service_name]
+                subprocess.run(start_command, check=True, capture_output=True)
+                self.logger.info(f"{service_name} started.")
+
+            return True
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Error executing command: {e.stderr.decode()}")
+            self.logger.error(
+                "Note: Ensure the service name is correct and the script is run as an administrator."
+            )
+        except Exception as e:
+            self.logger.error(f"An unexpected error occurred: {e}")
+        return False
+
+    async def restart_optikey(self, event: Event) -> bool:
+        try:
+            # Kill Optikey process
+            kill_command = [
+                "taskkill",
+                "-f",
+                "-im",
+                self.settings.tobii.optikey_exe_name,
+            ]
+            subprocess.run(kill_command, check=True, capture_output=True)
+
+            # Open Optikey process
+            subprocess.Popen([self.settings.tobii.optikey_path])
+            self.logger.info(f"Optikey started.")
+
+            return True
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Error executing command: {e.stderr.decode()}")
+            self.logger.error("Note: Ensure the Optikey Path.")
+        except Exception as e:
+            self.logger.error(f"An unexpected error occurred: {e}")
+        return False
+
+    async def restart_anydesk(self, event: Event) -> bool:
+        try:
+            # Kill Anydesk process
+            kill_command = [
+                "taskkill",
+                "-f",
+                "-im",
+                self.settings.remote_access.anydesk_exe_name,
+            ]
+            subprocess.run(kill_command, check=True, capture_output=True)
+
+            # Open Anydesk process
+            subprocess.Popen([self.settings.remote_access.anydesk_path])
+            self.logger.info(f"Anydesk started.")
+            return True
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Error executing command: {e.stderr.decode()}")
+            self.logger.error("Note: Ensure the Anydesk Path.")
+        except Exception as e:
+            self.logger.error(f"An unexpected error occurred: {e}")
+        return False
+
+    async def take_action(self, event: Event) -> bool | None:
+        resource_name = event.resource_name
+        if resource_name == "Tobii_Services":
+            result = await asyncio.to_thread(self.restart_tobii_service, event)
+        elif resource_name == "Optikey":
+            result = await self.restart_optikey(event=event)
+        elif resource_name == "AnyDesk":
+            result = await self.restart_anydesk(event=event)
+        else:
+            return None
+        return result
 
     def create_message(self, event: Event) -> Message:
         return Message(content=event.message)
@@ -109,9 +186,20 @@ class PyAgent:
     async def active_monitoring(self):
         while True:
             event: Event = await self.event_queue.get()
-            # await self.take_action(event=event)
+            response = await self.take_action(event=event)
             message: Message = self.create_message(event=event)
-            await self.messenger_service.send(message=message)
+
+            tasks = []
+            tasks.append(
+                asyncio.create_task(self.messenger_service.send(message=message))
+            )
+            tasks.append(
+                asyncio.create_task(self.alarm_service.send_alarm(event=event))
+            )
+
+            await asyncio.gather(*tasks)
+
+            self.logger.debug("Finished Event")
 
             self.event_queue.task_done()
 

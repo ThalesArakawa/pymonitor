@@ -4,10 +4,12 @@ from datetime import datetime
 
 type EventStatus = Literal[True, False, None]
 
+
 class Event(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
     event_id: Optional[str | None] = None
     message: str
+    resource_name: Optional[str | None] = None
     status: EventStatus
     value: Optional[Any] = None
     timestamp: Optional[datetime | None] = None

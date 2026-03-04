@@ -13,6 +13,8 @@ class MessengerService:
 
     def initialize(self, queue: asyncio.Queue):
         self.interfaces = get_interfaces(request_queue=queue)
+        if not self.interfaces:
+            self.logger.warning(f"No one interface to send messages")
 
     async def send(self, message: Event):
         for interface in self.interfaces:
