@@ -12,6 +12,7 @@ import asyncio
 import functools
 import wmi
 
+
 def monitor_metric(resource_name, interval: float = 5.0):
     """
     Invólucro que injeta o loop de repetição, a avaliação de conformidade
@@ -146,10 +147,10 @@ class MetricsService:
 
     @monitor_metric(resource_name="Network", interval=60)
     async def network_status(self):
-        ethernet_state = psutil.net_if_stats().get("Ethernet").isup
-        wifi_state = psutil.net_if_stats().get("Wi-Fi").isup
+        ethernet_state = psutil.net_if_stats().get("Ethernet")
+        wifi_state = psutil.net_if_stats().get("Wi-Fi")
         current_state_ok_status = False
-        if ethernet_state or wifi_state:
+        if (ethernet_state and ethernet_state.isup) or (wifi_state and wifi_state.isup):
             current_state_ok_status = True
         else:
             current_state_ok_status = False

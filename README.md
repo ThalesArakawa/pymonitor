@@ -12,7 +12,7 @@ uv sync
 
 
 ```bash
-uv run pyinstaller --name "PyMonitor" -p .\app\  app/main.py --noconsole --onefile
+uv run pyinstaller --name "PyMonitor" -p .\app\ main.py --noconsole --onefile
 ```
 
 ## Environment Variables

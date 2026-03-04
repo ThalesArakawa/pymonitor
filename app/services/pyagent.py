@@ -7,7 +7,7 @@ import asyncio
 from .log import get_logger
 import cv2
 import aiofiles
-
+from pathlib import Path
 import subprocess
 
 
@@ -105,11 +105,12 @@ class PyAgent:
             for service_name in services:
                 # Stop the service
                 stop_command = ["sc", "stop", service_name]
-                subprocess.run(
+                result = subprocess.run(
                     stop_command,
                     check=True,
                     capture_output=True,
                     creationflags=subprocess.CREATE_NO_WINDOW,
+                    text=True,
                 )
                 self.logger.info(f"{service_name} stopped.")
 
@@ -120,12 +121,15 @@ class PyAgent:
                     check=True,
                     capture_output=True,
                     creationflags=subprocess.CREATE_NO_WINDOW,
+                    text=True,
                 )
                 self.logger.info(f"{service_name} started.")
 
             return True
         except subprocess.CalledProcessError as e:
-            self.logger.error(f"Error executing command: {e.stderr.decode()}")
+            self.logger.error(
+                f"Error executing command: {e.stderr}\n{e.stdout}"
+            )
             self.logger.error(
                 "Note: Ensure the service name is correct and the script is run as an administrator."
             )
@@ -134,6 +138,10 @@ class PyAgent:
         return False
 
     async def restart_optikey(self, event: Event) -> bool:
+        optikey_path = Path(self.settings.tobii.optikey_path)
+        if not optikey_path.is_file():
+            self.logger.error(f"Arquivo do OptiKey não foi encontrado: {optikey_path}")
+            return False
         try:
             # Kill Optikey process
             kill_command = [
@@ -142,29 +150,36 @@ class PyAgent:
                 "-im",
                 self.settings.tobii.optikey_exe_name,
             ]
-            subprocess.run(
+            result = subprocess.run(
                 kill_command,
                 check=True,
                 capture_output=True,
                 creationflags=subprocess.CREATE_NO_WINDOW,
+                text=True,
             )
 
             # Open Optikey process
             subprocess.Popen(
-                [self.settings.tobii.optikey_path],
+                [optikey_path],
                 creationflags=subprocess.CREATE_NO_WINDOW,
             )
             self.logger.info(f"Optikey started.")
 
             return True
         except subprocess.CalledProcessError as e:
-            self.logger.error(f"Error executing command: {e.stderr.decode()}")
+            self.logger.error(
+                f"Error executing command: {e.stderr}\n{e.stdout}"
+            )
             self.logger.error("Note: Ensure the Optikey Path.")
         except Exception as e:
             self.logger.error(f"An unexpected error occurred: {e}")
         return False
 
     async def restart_anydesk(self, event: Event) -> bool:
+        anydesk_path = Path(self.settings.remote_access.anydesk_path)
+        if not anydesk_path.is_file():
+            self.logger.error(f"Arquivo do AnyDesk não foi encontrado: {anydesk_path}")
+            return False
         try:
             # Kill Anydesk process
             kill_command = [
@@ -173,22 +188,25 @@ class PyAgent:
                 "-im",
                 self.settings.remote_access.anydesk_exe_name,
             ]
-            subprocess.run(
+            result = subprocess.run(
                 kill_command,
                 check=True,
                 capture_output=True,
                 creationflags=subprocess.CREATE_NO_WINDOW,
+                text=True,
             )
 
             # Open Anydesk process
             subprocess.Popen(
-                [self.settings.remote_access.anydesk_path],
+                [anydesk_path],
                 creationflags=subprocess.CREATE_NO_WINDOW,
             )
             self.logger.info(f"Anydesk started.")
             return True
         except subprocess.CalledProcessError as e:
-            self.logger.error(f"Error executing command: {e.stderr.decode()}")
+            self.logger.error(
+                f"Error executing command: {e.stderr}\n{e.stdout}"
+            )
             self.logger.error("Note: Ensure the Anydesk Path.")
         except Exception as e:
             self.logger.error(f"An unexpected error occurred: {e}")
