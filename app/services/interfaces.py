@@ -13,7 +13,6 @@ from .log import get_logger
 
 
 class MessageInterface(ABC):
-
     @classmethod
     async def send(self, message: Message) -> bool:
         pass
@@ -100,7 +99,6 @@ class TelegramInterface(MessageInterface):
                     self.logger.error(f"Erro desconhecido: {e}")
         else:
             self.logger.error("Telegram bot is not set up. Cannot send message.")
-
 
 
 def get_interfaces(request_queue: asyncio.Queue) -> list[MessageInterface]:

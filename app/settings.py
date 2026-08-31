@@ -49,11 +49,12 @@ class MonitoringSettings(BaseSettings):
         10, description="Interval in seconds to check system status"
     )
 
+
 class AlarmSettings(BaseSettings):
     interval: int = 60
 
     def model_post_init(self, context):
-        if self.interval <=0:
+        if self.interval <= 0:
             raise ValueError("Alarm Interval time need to be greater than 0")
 
 

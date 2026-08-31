@@ -129,9 +129,7 @@ class PyAgent:
 
             return True
         except subprocess.CalledProcessError as e:
-            self.logger.error(
-                f"Error executing command: {e.stderr}\n{e.stdout}"
-            )
+            self.logger.error(f"Error executing command: {e.stderr}\n{e.stdout}")
             self.logger.error(
                 "Note: Ensure the service name is correct and the script is run as an administrator."
             )
@@ -169,9 +167,7 @@ class PyAgent:
 
             return True
         except subprocess.CalledProcessError as e:
-            self.logger.error(
-                f"Error executing command: {e.stderr}\n{e.stdout}"
-            )
+            self.logger.error(f"Error executing command: {e.stderr}\n{e.stdout}")
             self.logger.error("Note: Ensure the Optikey Path.")
         except Exception as e:
             self.logger.error(f"An unexpected error occurred: {e}")
@@ -206,9 +202,7 @@ class PyAgent:
             self.logger.info("Anydesk started.")
             return True
         except subprocess.CalledProcessError as e:
-            self.logger.error(
-                f"Error executing command: {e.stderr}\n{e.stdout}"
-            )
+            self.logger.error(f"Error executing command: {e.stderr}\n{e.stdout}")
             self.logger.error("Note: Ensure the Anydesk Path.")
         except Exception as e:
             self.logger.error(f"An unexpected error occurred: {e}")

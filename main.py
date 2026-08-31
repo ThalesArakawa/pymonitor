@@ -12,5 +12,6 @@ async def main() -> None:
     pymonitor = PyMonitor()
     await pymonitor.start()
 
+
 if __name__ == "__main__":
     asyncio.run(main())

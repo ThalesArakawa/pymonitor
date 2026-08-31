@@ -26,9 +26,7 @@ class AlarmService:
         if event.status:
             task = self.tasks.get(resource_name)
             if task and not task.done():
-                self.alarm_state[
-                    resource_name
-                ].set()
+                self.alarm_state[resource_name].set()
                 await task
                 self.tasks[resource_name] = None
                 await self.on_success(
@@ -57,7 +55,8 @@ class AlarmService:
 
             try:
                 await asyncio.wait_for(
-                    self.alarm_state[resource_name].wait(), timeout=self.settings.alarm.interval
+                    self.alarm_state[resource_name].wait(),
+                    timeout=self.settings.alarm.interval,
                 )
                 break
 
