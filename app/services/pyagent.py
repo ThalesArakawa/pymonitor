@@ -1,14 +1,16 @@
-from .messenger import MessengerService
-from .database import DataBaseConnector
-from .alarm import AlarmService
-from ..settings import get_settings
-from ..models import Event, Message, Request
 import asyncio
-from .log import get_logger
-import cv2
-import aiofiles
-from pathlib import Path
 import subprocess
+from pathlib import Path
+
+import aiofiles
+import cv2
+
+from ..models import Event, Message, Request
+from ..settings import get_settings
+from .alarm import AlarmService
+from .database import DataBaseConnector
+from .log import get_logger
+from .messenger import MessengerService
 
 
 class PyAgent:
@@ -163,7 +165,7 @@ class PyAgent:
                 [optikey_path],
                 creationflags=subprocess.CREATE_NO_WINDOW,
             )
-            self.logger.info(f"Optikey started.")
+            self.logger.info("Optikey started.")
 
             return True
         except subprocess.CalledProcessError as e:
@@ -201,7 +203,7 @@ class PyAgent:
                 [anydesk_path],
                 creationflags=subprocess.CREATE_NO_WINDOW,
             )
-            self.logger.info(f"Anydesk started.")
+            self.logger.info("Anydesk started.")
             return True
         except subprocess.CalledProcessError as e:
             self.logger.error(

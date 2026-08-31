@@ -1,8 +1,8 @@
+import asyncio
+
+from .database import DataBaseConnector, StateManager
 from .metrics import MetricsService
 from .pyagent import PyAgent
-from .messenger import MessengerService
-from .database import DataBaseConnector, StateManager
-import asyncio
 
 
 class PyMonitor:

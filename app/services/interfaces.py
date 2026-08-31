@@ -1,15 +1,15 @@
-from telegram.ext import Application, CommandHandler, CallbackContext
-from telegram import Update
-from ..settings import get_settings
 import asyncio
-from .log import get_logger
-import uuid
-from datetime import datetime
 import io
+import uuid
 from abc import ABC
-from ..models import Message, Request
+from datetime import datetime
 
-from typing import List
+from telegram import Update
+from telegram.ext import Application, CallbackContext, CommandHandler
+
+from ..models import Message, Request
+from ..settings import get_settings
+from .log import get_logger
 
 
 class MessageInterface(ABC):
@@ -55,7 +55,6 @@ class TelegramInterface(MessageInterface):
 
     async def get_status(self, update: Update, context: CallbackContext):
         self.logger.debug("Getting Status")
-        pass
 
     async def get_log(self, update: Update, context: CallbackContext):
         self.logger.info("Log requisitada via Telegram")
@@ -90,7 +89,7 @@ class TelegramInterface(MessageInterface):
                     document=log_file, filename="application_log.txt"
                 )
             else:
-                self.logger.debug(f"Periodic Update: Sending HTML message to Telegram.")
+                self.logger.debug("Periodic Update: Sending HTML message to Telegram.")
                 try:
                     await self.application.bot.send_message(
                         chat_id=self._chat_id,
@@ -104,7 +103,7 @@ class TelegramInterface(MessageInterface):
 
 
 
-def get_interfaces(request_queue: asyncio.Queue) -> List[MessageInterface]:
+def get_interfaces(request_queue: asyncio.Queue) -> list[MessageInterface]:
     interfaces = []
     settings = get_settings()
     if settings.use_telegram:

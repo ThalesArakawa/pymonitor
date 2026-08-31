@@ -1,13 +1,14 @@
-from app.services.pymonitor import PyMonitor
+import asyncio
+
 from app.services.log import get_logger
+from app.services.pymonitor import PyMonitor
 from app.settings import get_settings
 
-import asyncio
 
 async def main() -> None:
     settings = get_settings()
     logger = get_logger()
-    logger.debug(f"Caminho dos áudios: {settings.assets_path}")
+    logger.info(f"Configuração: {settings}")
     pymonitor = PyMonitor()
     await pymonitor.start()
 

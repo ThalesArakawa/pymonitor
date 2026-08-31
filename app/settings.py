@@ -1,12 +1,13 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import computed_field, Field
-from typing import Literal, Optional
-from functools import cache
-import os
 import logging
 import logging.config
+import os
 import sys
+from functools import cache
 from pathlib import Path
+from typing import Literal
+
+from pydantic import Field, computed_field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 type Env = Literal["test", "dev", "prod"]
 type LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -82,11 +83,11 @@ class AppSettings(BaseSettings):
     monitoring: MonitoringSettings = MonitoringSettings()
     remote_access: RemoteAccessSettings = RemoteAccessSettings()
     log_level: LogLevel = Field("DEBUG", frozen=True)
-    log_format: Optional[str] = (
+    log_format: str | None = (
         "%(asctime)s | %(levelname)s | %(name)s | %(module)s"
         " | %(funcName)s | %(lineno)s | %(message)s"
     )
-    log_date_format: Optional[str] = Field("%Y-%m-%d %H:%M:%S", frozen=True)
+    log_date_format: str | None = Field("%Y-%m-%d %H:%M:%S", frozen=True)
 
     @computed_field
     @property

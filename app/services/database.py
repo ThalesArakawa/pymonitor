@@ -1,5 +1,7 @@
-from ..models import Event
 from abc import ABC
+
+from ..models import Event
+
 
 class DataBaseConnector(ABC):
 

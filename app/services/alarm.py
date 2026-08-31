@@ -1,9 +1,11 @@
-from .log import get_logger
 import asyncio
-from playsound3 import playsound
-from ..settings import get_settings
-from ..models import Event
 from pathlib import Path
+
+from playsound3 import playsound
+
+from ..models import Event
+from ..settings import get_settings
+from .log import get_logger
 
 
 class AlarmService:
@@ -59,7 +61,7 @@ class AlarmService:
                 )
                 break
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 self.logger.error(f"Playing alarm for {resource_name}, again")
 
     async def on_success(self, audio: Path, resource_name: str):

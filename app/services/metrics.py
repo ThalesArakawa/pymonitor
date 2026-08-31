@@ -1,16 +1,16 @@
-import psutil
-from .log import get_logger
-from .database import DataBaseConnector
-from ..settings import get_settings
-import uuid
-from datetime import datetime
-import inspect
-import asyncio
-from ..models import Event
-
 import asyncio
 import functools
+import inspect
+import uuid
+from datetime import datetime
+
+import psutil
 import wmi
+
+from ..models import Event
+from ..settings import get_settings
+from .database import DataBaseConnector
+from .log import get_logger
 
 
 def monitor_metric(resource_name, interval: float = 5.0):
@@ -202,9 +202,9 @@ class MetricsService:
                 current_state_ok_status = True
 
         if current_state_ok_status:
-            message = f"Tobii conectado ✅"
+            message = "Tobii conectado ✅"
         else:
-            message = f"Tobii desconectado!!! 🚨"
+            message = "Tobii desconectado!!! 🚨"
 
         self.logger.debug(message)
         return Event(
@@ -245,13 +245,13 @@ class MetricsService:
                 )
             except psutil.NoSuchProcess:
                 current_state[service_name] = False
-            except Exception as e:
-                self.logger.error(f"Erro desconhecido encontrado")
+            except Exception:
+                self.logger.error("Erro desconhecido encontrado")
 
         message = ""
         current_state_ok_status = True
         for key, values in current_state.items():
-            if current_state[key]:
+            if values:
                 message += f"{key} UP ✅\n"
             else:
                 message += f"{key} DOWN 🚨\n"
