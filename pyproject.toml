@@ -11,10 +11,12 @@ dependencies = [
     "psutil>=7.2.2",
     "pydantic-settings>=2.13.1",
     "python-telegram-bot>=22.6",
-    "wmi>=1.5.1",
+    "wmi>=1.5.1; sys_platform == 'win32'",
 ]
 
 [dependency-groups]
 dev = [
+    "properdocs>=1.6.7",
     "pyinstaller>=6.19.0",
+    "ruff>=0.16.5",
 ]
