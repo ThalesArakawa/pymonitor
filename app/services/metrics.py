@@ -27,27 +27,23 @@ def monitor_metric(resource_name, interval: float = 5.0):
             )
 
             while True:
-                try:
-                    # 1. COLLECT METRIC
-                    current_state: Event = await func(self, *args, **kwargs)
-                    current_state.timestamp = datetime.now()
-                    current_state.event_id = str(uuid.uuid4())
-                    current_state.resource_name = resource_name
+                # 1. COLLECT METRIC
+                current_state: Event = await func(self, *args, **kwargs)
+                current_state.timestamp = datetime.now(tz=datetime.timezone.utc)
+                current_state.event_id = str(uuid.uuid4())
+                current_state.resource_name = resource_name
 
-                    # 2. AVAIL METRIC
-                    previous_state: Event = self.state_tracker.get(resource_name)
+                # 2. AVAIL METRIC
+                previous_state: Event = self.state_tracker.get(resource_name)
 
-                    # 3. TO THE QUEUE IF HAS STATE ALTERATION
-                    if previous_state.status != current_state.status:
-                        self.state_tracker.update_state(
-                            key=resource_name, content=current_state
-                        )
+                # 3. TO THE QUEUE IF HAS STATE ALTERATION
+                if previous_state.status != current_state.status:
+                    self.state_tracker.update_state(
+                        key=resource_name, content=current_state
+                    )
 
-                        self.logger.info("Enviando evento...")
-                        await self.event_queue.put(current_state)
-
-                except Exception as e:
-                    self.logger.error(f"[Erro no Monitor {resource_name}]: {e}")
+                    self.logger.info("Enviando evento...")
+                    await self.event_queue.put(current_state)
 
                 # 4. interval: O decorator cuida do tempo de espera
                 await asyncio.sleep(self.settings.monitoring.check_interval)
@@ -173,7 +169,7 @@ class MetricsService:
 
         if battery_stats is None:
             self.logger.warning("Battery information not available.")
-            content = "Battery information not available."
+            message = "Battery information not available."
             current_state_ok_status = None
             value = None
         else:
@@ -240,13 +236,11 @@ class MetricsService:
         for service_name in tobii_services:
             try:
                 service = psutil.win_service_get(service_name)
-                current_state[service_name] = (
-                    True if service.as_dict()["status"] == "running" else False
+                current_state[service_name] = bool(
+                    service.as_dict()["status"] == "running"
                 )
             except psutil.NoSuchProcess:
                 current_state[service_name] = False
-            except Exception:
-                self.logger.error("Erro desconhecido encontrado")
 
         message = ""
         current_state_ok_status = True

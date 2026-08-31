@@ -5,6 +5,7 @@ from abc import ABC
 from datetime import datetime
 
 from telegram import Update
+from telegram.error import TelegramError
 from telegram.ext import Application, CallbackContext, CommandHandler
 
 from ..models import Message, Request
@@ -47,7 +48,7 @@ class TelegramInterface(MessageInterface):
                 await self.application.start()
                 self.connected = True
                 await self.application.updater.start_polling()
-            except Exception as e:
+            except TelegramError as e:
                 self.logger.error(f"Failed to connect to Telegram {e}")
                 self.connected = False
                 await asyncio.sleep(360)
@@ -61,7 +62,7 @@ class TelegramInterface(MessageInterface):
             Request(
                 request_id=str(uuid.uuid4()),
                 message="log",
-                timestamp=datetime.now(),
+                timestamp=datetime.now(tz=datetime.timezone.utc),
                 update=update,
             )
         )
@@ -72,7 +73,7 @@ class TelegramInterface(MessageInterface):
             Request(
                 request_id=str(uuid.uuid4()),
                 message="photo",
-                timestamp=datetime.now(),
+                timestamp=datetime.now(tz=datetime.timezone.utc),
                 update=update,
             )
         )
@@ -95,8 +96,8 @@ class TelegramInterface(MessageInterface):
                         text=response,
                         parse_mode="HTML",
                     )
-                except Exception as e:
-                    self.logger.error(f"Erro desconhecido: {e}")
+                except TelegramError as e:
+                    self.logger.error(f"Erro do Telegram: {e}")
         else:
             self.logger.error("Telegram bot is not set up. Cannot send message.")
 

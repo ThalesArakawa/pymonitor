@@ -14,10 +14,7 @@ from .messenger import MessengerService
 
 
 class PyAgent:
-    def __init__(
-        self,
-        messenger: MessengerService = MessengerService(),
-    ):
+    def __init__(self, messenger: MessengerService):
         self.logger = get_logger()
         self.settings = get_settings()
         self.event_queue: asyncio.Queue | None = []
@@ -67,8 +64,8 @@ class PyAgent:
                 self.settings.base_path.parent / "app.log", mode="rb"
             ) as f:
                 log = await f.read()
-        except Exception as e:
-            self.logger.error(f"Error reading log file: {e}")
+        except FileNotFoundError as e:
+            self.logger.error(f"Log file NOT Found: {e}")
             log = b""
 
         return log
@@ -107,7 +104,7 @@ class PyAgent:
             for service_name in services:
                 # Stop the service
                 stop_command = ["sc", "stop", service_name]
-                result = subprocess.run(
+                subprocess.run(
                     stop_command,
                     check=True,
                     capture_output=True,
@@ -133,8 +130,7 @@ class PyAgent:
             self.logger.error(
                 "Note: Ensure the service name is correct and the script is run as an administrator."
             )
-        except Exception as e:
-            self.logger.error(f"An unexpected error occurred: {e}")
+
         return False
 
     async def restart_optikey(self, event: Event) -> bool:
@@ -144,24 +140,23 @@ class PyAgent:
             return False
         try:
             # Kill Optikey process
-            kill_command = [
-                "taskkill",
+            args = [
                 "-f",
                 "-im",
                 self.settings.tobii.optikey_exe_name,
             ]
-            result = subprocess.run(
-                kill_command,
-                check=True,
-                capture_output=True,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                text=True,
+            await asyncio.create_subprocess_exec(
+                "taskkill",
+                *args,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
 
             # Open Optikey process
-            subprocess.Popen(
-                [optikey_path],
-                creationflags=subprocess.CREATE_NO_WINDOW,
+            await asyncio.create_subprocess_exec(
+                optikey_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
             self.logger.info("Optikey started.")
 
@@ -169,8 +164,7 @@ class PyAgent:
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Error executing command: {e.stderr}\n{e.stdout}")
             self.logger.error("Note: Ensure the Optikey Path.")
-        except Exception as e:
-            self.logger.error(f"An unexpected error occurred: {e}")
+
         return False
 
     async def restart_anydesk(self, event: Event) -> bool:
@@ -181,31 +175,28 @@ class PyAgent:
         try:
             # Kill Anydesk process
             kill_command = [
-                "taskkill",
                 "-f",
                 "-im",
                 self.settings.remote_access.anydesk_exe_name,
             ]
-            result = subprocess.run(
-                kill_command,
-                check=True,
-                capture_output=True,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                text=True,
+            await asyncio.create_subprocess_exec(
+                "taskkill",
+                *kill_command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
 
             # Open Anydesk process
-            subprocess.Popen(
-                [anydesk_path],
-                creationflags=subprocess.CREATE_NO_WINDOW,
+            await asyncio.create_subprocess_exec(
+                anydesk_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
             self.logger.info("Anydesk started.")
             return True
         except subprocess.CalledProcessError as e:
             self.logger.error(f"Error executing command: {e.stderr}\n{e.stdout}")
             self.logger.error("Note: Ensure the Anydesk Path.")
-        except Exception as e:
-            self.logger.error(f"An unexpected error occurred: {e}")
         return False
 
     async def take_action(self, event: Event) -> bool | None:
@@ -227,7 +218,7 @@ class PyAgent:
         while True:
             event: Event = await self.event_queue.get()
             if not event.status:
-                response = await self.take_action(event=event)
+                await self.take_action(event=event)
             message: Message = self.create_message(event=event)
 
             tasks = []

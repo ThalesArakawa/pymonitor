@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-type EventStatus = Literal[True, False, None]
+type EventStatus = Literal[True, False] | None
 
 
 class Event(BaseModel):

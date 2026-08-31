@@ -1,6 +1,6 @@
 import asyncio
 
-from .database import DataBaseConnector, StateManager
+from .database import DataBaseConnector
 from .metrics import MetricsService
 from .pyagent import PyAgent
 
@@ -8,10 +8,10 @@ from .pyagent import PyAgent
 class PyMonitor:
     def __init__(
         self,
-        metric_collector: MetricsService = MetricsService(),
-        agent: PyAgent = PyAgent(),
-        event_queue: asyncio.Queue = asyncio.Queue(),
-        database_connector: DataBaseConnector = StateManager(),
+        metric_collector: MetricsService,
+        agent: PyAgent,
+        event_queue: asyncio.Queue,
+        database_connector: DataBaseConnector,
     ):
         self.metric_collector = metric_collector
         self.event_queue = event_queue
