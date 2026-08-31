@@ -1,0 +1,58 @@
+site_name: PyMonitor - Documentação Técnica
+theme:
+  name: material
+  language: pt-BR
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+    - navigation.top
+    - navigation.tracking
+    - navigation.expand
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Mudar para modo escuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Mudar para modo claro
+
+plugins:
+  - search
+  - glightbox
+  - gen-files:
+      scripts:
+        - docs/gen_erd.py
+  - mkdocstrings:
+      handlers:
+        python:
+          setup_commands:
+            - import sys
+            - sys.path.append(".")
+  - kroki:
+      server_url: http://localhost:8080
+      enable_inline: true
+
+markdown_extensions:
+  - pymdownx.snippets:
+      check_paths: true
+      base_path: ["docs"] # Define onde o plugin deve procurar os arquivos
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+nav: {}
+
+extra_css:
+  - stylesheets/extra.css
