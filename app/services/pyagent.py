@@ -193,71 +193,73 @@ class PyAgent:
 
         return False
 
+    async def _run_subprocess(self, command: list[str], timeout: float = 15.0) -> bool:
+        """Run subprocess, drain pipes, enforce timeout."""
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+        except FileNotFoundError as exc:
+            self.logger.error(f"Executable not found: {command[0]}: {exc}")
+            return False
+        except OSError as exc:
+            self.logger.error(f"Failed to start {command[0]}: {exc}")
+            return False
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=timeout
+            )
+        except TimeoutError as exc:
+            self.logger.error(f"Command timed out: {command}: {exc}")
+            try:
+                process.kill()
+                await process.wait()
+            except OSError:
+                pass
+            return False
+        except OSError as exc:
+            self.logger.error(f"OS error during {command}: {exc}")
+            return False
+        if process.returncode != 0:
+            self.logger.error(
+                f"Command failed {command} code={process.returncode} "
+                f"stdout={stdout.decode(errors='ignore')} "
+                f"stderr={stderr.decode(errors='ignore')}"
+            )
+            return False
+        return True
+
     async def restart_optikey(self, event: Event) -> bool:
         optikey_path = Path(self.settings.tobii.optikey_path)
         if not optikey_path.is_file():
             self.logger.error(f"Arquivo do OptiKey não foi encontrado: {optikey_path}")
             return False
-        try:
-            # Kill Optikey process
-            args = [
-                "-f",
-                "-im",
-                self.settings.tobii.optikey_exe_name,
-            ]
-            await asyncio.create_subprocess_exec(
-                "taskkill",
-                *args,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-
-            # Open Optikey process
-            await asyncio.create_subprocess_exec(
-                optikey_path,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
+        kill_ok = await self._run_subprocess(
+            ["taskkill", "-f", "-im", self.settings.tobii.optikey_exe_name]
+        )
+        if not kill_ok:
+            self.logger.warning("taskkill for OptiKey returned non-zero, continuing")
+        start_ok = await self._run_subprocess([str(optikey_path)])
+        if start_ok:
             self.logger.info("Optikey started.")
-
-            return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Error executing command: {e.stderr}\n{e.stdout}")
-            self.logger.error("Note: Ensure the Optikey Path.")
-
-        return False
+        return start_ok
 
     async def restart_anydesk(self, event: Event) -> bool:
         anydesk_path = Path(self.settings.remote_access.anydesk_path)
         if not anydesk_path.is_file():
             self.logger.error(f"Arquivo do AnyDesk não foi encontrado: {anydesk_path}")
             return False
-        try:
-            # Kill Anydesk process
-            kill_command = [
-                "-f",
-                "-im",
-                self.settings.remote_access.anydesk_exe_name,
-            ]
-            await asyncio.create_subprocess_exec(
-                "taskkill",
-                *kill_command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-
-            # Open Anydesk process
-            await asyncio.create_subprocess_exec(
-                anydesk_path,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
+        kill_ok = await self._run_subprocess(
+            ["taskkill", "-f", "-im", self.settings.remote_access.anydesk_exe_name]
+        )
+        if not kill_ok:
+            self.logger.warning("taskkill for AnyDesk returned non-zero, continuing")
+        start_ok = await self._run_subprocess([str(anydesk_path)])
+        if start_ok:
             self.logger.info("Anydesk started.")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Error executing command: {e.stderr}\n{e.stdout}")
-            self.logger.error("Note: Ensure the Anydesk Path.")
-        return False
+        return start_ok
 
     async def take_action(self, event: Event) -> bool | None:
         resource_name = event.resource_name
