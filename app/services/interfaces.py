@@ -90,7 +90,7 @@ class TelegramInterface(MessageInterface):
             await message.recipient.message.reply_photo(photo=photo_file)
         except TelegramError:
             self.logger.exception("Failed to send photo via Telegram")
-        except (OSError, RuntimeError):
+        except (OSError, RuntimeError):  # fmt: skip
             self.logger.exception("OS error sending photo")
         except Exception:
             self.logger.exception("Unexpected error sending photo")
@@ -103,7 +103,7 @@ class TelegramInterface(MessageInterface):
             )
         except TelegramError:
             self.logger.exception("Failed to send document via Telegram")
-        except (OSError, RuntimeError):
+        except (OSError, RuntimeError):  # fmt: skip
             self.logger.exception("OS error sending document")
         except Exception:
             self.logger.exception("Unexpected error sending document")
@@ -117,7 +117,7 @@ class TelegramInterface(MessageInterface):
             )
         except TelegramError:
             self.logger.exception("Failed to send text via Telegram")
-        except (OSError, RuntimeError):
+        except (OSError, RuntimeError):  # fmt: skip
             self.logger.exception("OS error sending text")
         except Exception:
             self.logger.exception("Unexpected error sending text")

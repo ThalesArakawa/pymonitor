@@ -45,7 +45,9 @@ def monitor_metric(resource_name, interval=None):
         async def wrapper(self, *args, **kwargs):
             while True:
                 await _collect_and_emit(...)  # handles status diff + queue
-                await asyncio.sleep(_resolve_interval(interval, settings.check_interval))
+                await asyncio.sleep(
+                    _resolve_interval(interval, settings.check_interval)
+                )
 
         wrapper._is_monitor = True
         return wrapper
