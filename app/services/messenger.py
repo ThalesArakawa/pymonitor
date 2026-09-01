@@ -12,8 +12,10 @@ class MessengerService:
         self.interfaces: list[MessageInterface] = []
         self.request_queue: asyncio.Queue[Any] | None = None
 
-    def initialize(self, queue: asyncio.Queue[Any]) -> None:
-        self.interfaces = get_interfaces(request_queue=queue) or []
+    def initialize(
+        self, queue: asyncio.Queue[Any], settings: Any | None = None
+    ) -> None:
+        self.interfaces = get_interfaces(request_queue=queue, settings=settings) or []
         if not self.interfaces:
             self.logger.warning("No interface to send messages")
 
@@ -21,7 +23,7 @@ class MessengerService:
         for interface in list(self.interfaces):
             try:
                 await interface.send(message)
-            except OSError, RuntimeError:
+            except (OSError, RuntimeError):  # fmt: skip
                 self.logger.exception("Messenger send failed")
             except Exception:
                 self.logger.exception("Unexpected messenger send")

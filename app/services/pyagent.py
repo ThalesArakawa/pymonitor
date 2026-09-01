@@ -81,16 +81,20 @@ class PyAgent:
         self.request_queue: asyncio.Queue[Any] = asyncio.Queue()
         self.state_tracker: DataBaseConnector | None = None
         self.messenger_service: MessengerService = messenger
-        self.alarm_service: AlarmService = AlarmService()
+        self.alarm_service: AlarmService = AlarmService(
+            settings=self.settings, logger=self.logger
+        )
         self._capture_factory: CaptureFactory = capture_factory or (
             lambda idx: cv2.VideoCapture(idx)
         )
-        self.messenger_service.initialize(queue=self.request_queue)
+        self.messenger_service.initialize(
+            queue=self.request_queue, settings=self.settings
+        )
 
-    def set_event_queue(self, queue: asyncio.Queue):
+    def set_event_queue(self, queue: asyncio.Queue[Any]) -> None:
         self.event_queue = queue
 
-    def set_state_tracker(self, database_connector: DataBaseConnector):
+    def set_state_tracker(self, database_connector: DataBaseConnector) -> None:
         self.state_tracker = database_connector
 
     async def get_photo(self) -> bytes | None:
@@ -299,7 +303,7 @@ class PyAgent:
                                 self.alarm_service.send_alarm(event=event)
                             ),
                         )
-                    except OSError, RuntimeError:
+                    except (OSError, RuntimeError):  # fmt: skip
                         self.logger.exception("Send/alarm failed")
                     except Exception:
                         self.logger.exception("Unexpected send failure")
@@ -326,7 +330,7 @@ class PyAgent:
                     message = await self.respond(request=request)
                     try:
                         await self.messenger_service.send(message=message)
-                    except OSError, RuntimeError:
+                    except (OSError, RuntimeError):  # fmt: skip
                         self.logger.exception("Passive send failed")
                     except Exception:
                         self.logger.exception("Unexpected passive send")
