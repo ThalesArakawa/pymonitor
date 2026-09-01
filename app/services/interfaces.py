@@ -1,8 +1,9 @@
 import asyncio
 import io
 import uuid
-from abc import ABC
-from datetime import datetime
+from abc import ABC, abstractmethod
+from datetime import UTC, datetime
+from typing import Any
 
 from telegram import Update
 from telegram.error import TelegramError
@@ -14,12 +15,12 @@ from .log import get_logger
 
 
 class MessageInterface(ABC):
-    @classmethod
-    async def send(self, message: Message) -> bool:
+    @abstractmethod
+    async def send(self, message: Message) -> None:
         pass
 
 
-def format_message(message: Message):
+def format_message(message: Message) -> Any:
     if message.byte_content:
         return message.byte_content
     return message.content
@@ -56,50 +57,84 @@ class TelegramInterface(MessageInterface):
     async def get_status(self, update: Update, context: CallbackContext):
         self.logger.debug("Getting Status")
 
-    async def get_log(self, update: Update, context: CallbackContext):
+    async def get_log(self, update: Update, context: CallbackContext) -> None:
         self.logger.info("Log requisitada via Telegram")
         await self.request_queue.put(
             Request(
                 request_id=str(uuid.uuid4()),
                 message="log",
-                timestamp=datetime.now(tz=datetime.timezone.utc),
+                timestamp=datetime.now(tz=UTC),
                 update=update,
             )
         )
 
-    async def get_photo(self, update: Update, context: CallbackContext):
+    async def get_photo(self, update: Update, context: CallbackContext) -> None:
         self.logger.info("Foto requisitada via Telegram")
         await self.request_queue.put(
             Request(
                 request_id=str(uuid.uuid4()),
                 message="photo",
-                timestamp=datetime.now(tz=datetime.timezone.utc),
+                timestamp=datetime.now(tz=UTC),
                 update=update,
             )
         )
 
-    async def send(self, message: Message):
+    async def _send_photo(self, message: Message, response: bytes) -> None:
+        try:
+            photo_file = io.BytesIO(response)
+            await message.recipient.message.reply_photo(photo=photo_file)
+        except TelegramError:
+            self.logger.exception("Failed to send photo via Telegram")
+        except OSError, RuntimeError:
+            self.logger.exception("OS error sending photo")
+        except Exception:
+            self.logger.exception("Unexpected error sending photo")
+
+    async def _send_document(self, message: Message, response: bytes) -> None:
+        try:
+            log_file = io.BytesIO(response)
+            await message.recipient.message.reply_document(
+                document=log_file, filename="application_log.txt"
+            )
+        except TelegramError:
+            self.logger.exception("Failed to send document via Telegram")
+        except OSError, RuntimeError:
+            self.logger.exception("OS error sending document")
+        except Exception:
+            self.logger.exception("Unexpected error sending document")
+
+    async def _send_text(self, response: str) -> None:
+        try:
+            await self.application.bot.send_message(
+                chat_id=self._chat_id,
+                text=response,
+                parse_mode="HTML",
+            )
+        except TelegramError:
+            self.logger.exception("Failed to send text via Telegram")
+        except OSError, RuntimeError:
+            self.logger.exception("OS error sending text")
+        except Exception:
+            self.logger.exception("Unexpected error sending text")
+
+    async def send(self, message: Message) -> None:
         response = format_message(message)
-        if self.application:
-            if message.type == "photo":
-                await message.recipient.message.reply_photo(response)
-            elif message.type == "doc":
-                log_file = io.BytesIO(response)
-                await message.recipient.message.reply_document(
-                    document=log_file, filename="application_log.txt"
-                )
-            else:
-                self.logger.debug("Periodic Update: Sending HTML message to Telegram.")
-                try:
-                    await self.application.bot.send_message(
-                        chat_id=self._chat_id,
-                        text=response,
-                        parse_mode="HTML",
-                    )
-                except TelegramError as e:
-                    self.logger.error(f"Erro do Telegram: {e}")
-        else:
+        if not self.application:
             self.logger.error("Telegram bot is not set up. Cannot send message.")
+            return
+        if message.type == "photo":
+            if not isinstance(response, (bytes, bytearray)):
+                self.logger.error("Photo response missing bytes")
+                return
+            await self._send_photo(message, bytes(response))
+        elif message.type == "doc":
+            if not isinstance(response, (bytes, bytearray)):
+                self.logger.error("Doc response missing bytes")
+                return
+            await self._send_document(message, bytes(response))
+        else:
+            self.logger.debug("Periodic Update: Sending HTML message to Telegram.")
+            await self._send_text(str(response))
 
 
 def get_interfaces(request_queue: asyncio.Queue) -> list[MessageInterface]:
