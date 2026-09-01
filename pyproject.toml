@@ -16,6 +16,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mkdocs-gen-files>=0.6.1",
+    "mkdocs-glightbox>=0.5.2",
+    "mkdocs-kroki-plugin>=1.6.0",
+    "mkdocs-material>=9.7.7",
+    "mkdocstrings[python]>=1.0.6",
     "properdocs>=1.6.7",
     "pyinstaller>=6.19.0",
     "ruff>=0.16.5",

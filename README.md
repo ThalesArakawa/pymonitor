@@ -51,3 +51,7 @@ PYMONITOR__REMOTE_ACCESS__ANYDESK_PATH=
 # # ALARM SOUND
 PYMONITOR__USE_ALARM_SOUND=true
 ```
+
+## Read the Docs!
+
+We are using properdocs to help construct the documentation
