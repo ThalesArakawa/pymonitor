@@ -153,45 +153,50 @@ class PyAgent:
         else:
             return Message(content="Método não implementado!")
 
+    def _run_sc_command(self, service_name: str, action: str) -> bool:
+        """Run sc action with timeout and Windows flag handling."""
+        command = ["sc", action, service_name]
+        creation_flag = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        try:
+            result = subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                creationflags=creation_flag,
+                text=True,
+                timeout=15.0,
+            )
+            self.logger.info(f"{service_name} {action} output: {result.stdout.strip()}")
+            return True
+        except subprocess.CalledProcessError as exc:
+            self.logger.error(
+                f"sc {action} {service_name} failed: {exc.stderr} {exc.stdout}"
+            )
+            return False
+        except subprocess.TimeoutExpired as exc:
+            self.logger.error(f"sc {action} {service_name} timed out: {exc}")
+            return False
+        except FileNotFoundError as exc:
+            self.logger.error(f"sc not found: {exc}")
+            return False
+        except OSError as exc:
+            self.logger.error(f"OS error running sc {action}: {exc}")
+            return False
+
     def restart_tobii_service(self, event: Event) -> bool:
         services = [
             self.settings.tobii.service_name,
             self.settings.tobii.generic_name,
             self.settings.tobii.eyetracker_name,
         ]
-
-        try:
-            for service_name in services:
-                # Stop the service
-                stop_command = ["sc", "stop", service_name]
-                subprocess.run(
-                    stop_command,
-                    check=True,
-                    capture_output=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW,
-                    text=True,
-                )
-                self.logger.info(f"{service_name} stopped.")
-
-                # Start the service
-                start_command = ["sc", "start", service_name]
-                subprocess.run(
-                    start_command,
-                    check=True,
-                    capture_output=True,
-                    creationflags=subprocess.CREATE_NO_WINDOW,
-                    text=True,
-                )
-                self.logger.info(f"{service_name} started.")
-
-            return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Error executing command: {e.stderr}\n{e.stdout}")
-            self.logger.error(
-                "Note: Ensure the service name is correct and the script is run as an administrator."
-            )
-
-        return False
+        for service_name in services:
+            if not self._run_sc_command(service_name, "stop"):
+                self.logger.error(f"Failed to stop {service_name}, aborting")
+                return False
+            if not self._run_sc_command(service_name, "start"):
+                self.logger.error(f"Failed to start {service_name}")
+                return False
+        return True
 
     async def _run_subprocess(self, command: list[str], timeout: float = 15.0) -> bool:
         """Run subprocess, drain pipes, enforce timeout."""
