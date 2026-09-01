@@ -4,7 +4,7 @@ import os
 import sys
 from functools import cache
 from pathlib import Path
-from typing import Literal
+from typing import Any, ClassVar, Literal
 
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -74,6 +74,8 @@ class AppSettings(BaseSettings):
         env_nested_delimiter="__",
         nested_model_default_partial_update=True,
     )
+
+    _logging_configured: ClassVar[bool] = False
 
     env: Env = "test"
     use_telegram: bool
@@ -151,8 +153,10 @@ class AppSettings(BaseSettings):
             },
         }
 
-    def model_post_init(self, context):
-        logging.config.dictConfig(self.logging_config)
+    def model_post_init(self, context: Any) -> None:
+        if not AppSettings._logging_configured:
+            logging.config.dictConfig(self.logging_config)
+            AppSettings._logging_configured = True
         logging.getLogger("urllib3").setLevel(logging.INFO)
         logging.getLogger("httpcore").setLevel(logging.INFO)
         logging.getLogger("telegram").setLevel(logging.INFO)

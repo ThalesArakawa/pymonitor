@@ -27,15 +27,20 @@ def format_message(message: Message) -> Any:
 
 
 class TelegramInterface(MessageInterface):
-    def __init__(self, request_queue: asyncio.Queue):
+    def __init__(
+        self,
+        request_queue: asyncio.Queue[Any],
+        settings: Any | None = None,
+        logger: Any | None = None,
+    ) -> None:
         self.request_queue = request_queue
-        self._token = get_settings().telegram.bot_token
-        self._chat_id = get_settings().telegram.chat_id
-        self.settings = get_settings()
-        self.logger = get_logger()
+        self.settings = settings or get_settings()
+        self.logger = logger or get_logger()
+        self._token = self.settings.telegram.bot_token
+        self._chat_id = self.settings.telegram.chat_id
         self.application = Application.builder().token(self._token).build()
         self.connected = False
-        self.photo_mode = get_settings().monitoring.photo_mode
+        self.photo_mode = self.settings.monitoring.photo_mode
 
     async def listen(self) -> None:
         self.logger.info("Starting to listen to Telegram Interface")
@@ -85,7 +90,7 @@ class TelegramInterface(MessageInterface):
             await message.recipient.message.reply_photo(photo=photo_file)
         except TelegramError:
             self.logger.exception("Failed to send photo via Telegram")
-        except OSError, RuntimeError:
+        except (OSError, RuntimeError):
             self.logger.exception("OS error sending photo")
         except Exception:
             self.logger.exception("Unexpected error sending photo")
@@ -98,7 +103,7 @@ class TelegramInterface(MessageInterface):
             )
         except TelegramError:
             self.logger.exception("Failed to send document via Telegram")
-        except OSError, RuntimeError:
+        except (OSError, RuntimeError):
             self.logger.exception("OS error sending document")
         except Exception:
             self.logger.exception("Unexpected error sending document")
@@ -112,7 +117,7 @@ class TelegramInterface(MessageInterface):
             )
         except TelegramError:
             self.logger.exception("Failed to send text via Telegram")
-        except OSError, RuntimeError:
+        except (OSError, RuntimeError):
             self.logger.exception("OS error sending text")
         except Exception:
             self.logger.exception("Unexpected error sending text")
@@ -137,9 +142,13 @@ class TelegramInterface(MessageInterface):
             await self._send_text(str(response))
 
 
-def get_interfaces(request_queue: asyncio.Queue) -> list[MessageInterface]:
-    interfaces = []
-    settings = get_settings()
-    if settings.use_telegram:
-        interfaces.append(TelegramInterface(request_queue=request_queue))
+def get_interfaces(
+    request_queue: asyncio.Queue[Any], settings: Any | None = None
+) -> list[MessageInterface]:
+    interfaces: list[MessageInterface] = []
+    resolved = settings or get_settings()
+    if resolved.use_telegram:
+        interfaces.append(
+            TelegramInterface(request_queue=request_queue, settings=resolved)
+        )
     return interfaces
