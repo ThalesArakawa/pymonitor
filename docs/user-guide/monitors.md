@@ -1,6 +1,6 @@
 # Monitors
 
-PyMonitor ships with **7 built-in monitors** (`app/services/metrics.py`). Each polls via `@monitor_metric(resource_name, interval=60)` but actually sleeps `settings.monitoring.check_interval` (default **10s**). An `Event` is only emitted when `status` flips, so you won't get spammed.
+PyMonitor ships with **7 built-in monitors** (`app/services/metrics.py`). Each polls via `@monitor_metric(resource_name, interval=60)` and sleeps `interval` if set, otherwise `settings.monitoring.check_interval` (default **10s**). An `Event` is only emitted when `status` flips, so you won't get spammed.
 
 > For developers adding a monitor, see [Adding a Monitor](../contributing/adding-monitor.md).
 
@@ -60,7 +60,7 @@ On desktop without battery, you'll always see `None` and no alarm. On laptop, tr
 wmi.WMI().Win32_PnPEntity()
 # any entity where "tobii" in entity.Name.lower()
 ```
-Detects USB eyetracker presence. Alarms: yes. **Note typo**: resource name is `"Tobbi_Hardware"` (double b) in code - keep this string when adding actions.
+Detects USB eyetracker presence. Alarms: yes. Resource name is `"Tobii_Hardware"`.
 
 ### Tobii Services (`check_tobii_status`)
 Most complex. Checks **6** things and joins results with `\n`:
@@ -91,7 +91,7 @@ await asyncio.sleep(settings.monitoring.check_interval)
 
 ## Tuning
 
-* `PYMONITOR__MONITORING__CHECK_INTERVAL=10` controls all monitors. The `interval=60` argument in the decorator is currently **ignored** (known behavior, see Roadmap).
+* `PYMONITOR__MONITORING__CHECK_INTERVAL=10` is the fallback; `interval=60` in the decorator overrides it per-monitor.
 * Add `PYMONITOR__LOG_LEVEL=DEBUG` to see each poll in `app.log`/`stdout`.
 
 ---

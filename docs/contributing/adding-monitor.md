@@ -33,26 +33,19 @@ class MetricsService:
 
 * Decorate with `@monitor_metric(resource_name="[NAME]", interval=[SECONDS])`.
 * Must return an `Event` with `(message, status, value?)` (`app/models/event.py`).
-* `resource_name` is the deduplication key used by `StateManager` - choose a stable string. If you use `"Tobbi_Hardware"` note the existing typo (double b) - keep it for consistency or fix globally.
-* `interval` param is currently **ignored** - all monitors sleep `settings.monitoring.check_interval` (default 10s). Pass it for forward-compatibility; don't rely on per-monitor intervals yet.
+* `resource_name` is the deduplication key used by `StateManager` - choose a stable string.
+* `interval` overrides `settings.monitoring.check_interval` per-monitor (fallback to global).
 
 ### 2. The Decorator Does the Rest
 
 ```python
-def monitor_metric(resource_name, interval=5.0):
+def monitor_metric(resource_name, interval=None):
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(self, *args, **kwargs):
             while True:
-                event = await func(self, *args, **kwargs)
-                event.timestamp = datetime.now()
-                event.event_id = str(uuid.uuid4())
-                event.resource_name = resource_name
-                previous = self.state_tracker.get(resource_name)
-                if previous.status != event.status:
-                    self.state_tracker.update_state(resource_name, event)
-                    await self.event_queue.put(event)
-                await asyncio.sleep(get_settings().monitoring.check_interval)
+                await _collect_and_emit(...)  # handles status diff + queue
+                await asyncio.sleep(_resolve_interval(interval, settings.check_interval))
 
         wrapper._is_monitor = True
         return wrapper

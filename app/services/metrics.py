@@ -293,7 +293,7 @@ class MetricsService:
         self.logger.debug(message)
         return Event(message=message, status=is_plugged, value=percent)
 
-    @monitor_metric(resource_name="Tobbi_Hardware", interval=60)
+    @monitor_metric(resource_name="Tobii_Hardware", interval=60)
     async def tobii_hardware_status(self) -> Event:
         devices = await asyncio.to_thread(_query_wmi_devices)
         is_connected = any(
