@@ -18,6 +18,11 @@ PyMonitor is an open-source tool designed for individuals with ALS, supporting O
 - **Async Core**: `asyncio` runs `MetricsService` (monitoring) and `PyAgent` (actions/Telegram).
 - **State Management**: In-memory `StateManager` implementing the `DataBaseConnector` ABC.
 - **Windows Integration**: Heavily uses `wmi`, `psutil`, Windows service APIs, and `sc`/`taskkill` commands. Requires Administrator privileges for service restart actions.
+- **Environment:** The target production OS is Windows 10/11. However, local development and testing can be executed on Linux. 
+- **OS Constraints:** 
+  1. Do NOT attempt to run Windows-specific shell commands (`wmic`, `powershell`) in this terminal.
+  2. Use `pathlib` for all file paths. Never hardcode slashes.
+  3. When writing or running `pytest` suites for OS-level modules (e.g., WMI, Registry), you MUST mock the OS responses. The local Linux environment does not have access to Windows APIs.
 
 ## Development Workflows
 
