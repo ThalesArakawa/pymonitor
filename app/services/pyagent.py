@@ -281,39 +281,78 @@ class PyAgent:
     def create_message(self, event: Event) -> Message:
         return Message(content=event.message)
 
-    async def active_monitoring(self):
+    async def active_monitoring(self) -> None:
         while True:
-            event: Event = await self.event_queue.get()
-            if not event.status:
-                await self.take_action(event=event)
-            message: Message = self.create_message(event=event)
+            event: Event | None = None
+            try:
+                event = await self.event_queue.get()
+                try:
+                    if not event.status:
+                        await self.take_action(event=event)
+                    message: Message = self.create_message(event=event)
+                    try:
+                        await asyncio.gather(
+                            asyncio.create_task(
+                                self.messenger_service.send(message=message)
+                            ),
+                            asyncio.create_task(
+                                self.alarm_service.send_alarm(event=event)
+                            ),
+                        )
+                    except OSError, RuntimeError:
+                        self.logger.exception("Send/alarm failed")
+                    except Exception:
+                        self.logger.exception("Unexpected send failure")
+                    self.logger.debug("Finished Event")
+                finally:
+                    self.event_queue.task_done()
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                self.logger.exception("active_monitoring loop error")
+                if event is not None:
+                    try:
+                        self.event_queue.task_done()
+                    except ValueError:
+                        pass
+                await asyncio.sleep(1)
 
-            tasks = []
-            tasks.append(
-                asyncio.create_task(self.messenger_service.send(message=message))
-            )
-            tasks.append(
-                asyncio.create_task(self.alarm_service.send_alarm(event=event))
-            )
-
-            await asyncio.gather(*tasks)
-
-            self.logger.debug("Finished Event")
-
-            self.event_queue.task_done()
-
-    async def passive_monitoring(self):
+    async def passive_monitoring(self) -> None:
         while True:
-            request: Request = await self.request_queue.get()
-            message = await self.respond(request=request)
-            await self.messenger_service.send(message=message)
-            self.request_queue.task_done()
+            request: Request | None = None
+            try:
+                request = await self.request_queue.get()
+                try:
+                    message = await self.respond(request=request)
+                    try:
+                        await self.messenger_service.send(message=message)
+                    except OSError, RuntimeError:
+                        self.logger.exception("Passive send failed")
+                    except Exception:
+                        self.logger.exception("Unexpected passive send")
+                finally:
+                    self.request_queue.task_done()
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                self.logger.exception("passive_monitoring loop error")
+                if request is not None:
+                    try:
+                        self.request_queue.task_done()
+                    except ValueError:
+                        pass
+                await asyncio.sleep(1)
 
-    async def start(self):
+    async def start(self) -> None:
         self.logger.info("Starting Agent")
-        tasks = []
-        tasks.append(asyncio.create_task(self.messenger_service.start()))
-        tasks.append(asyncio.create_task(self.active_monitoring()))
-        tasks.append(asyncio.create_task(self.passive_monitoring()))
-
-        await asyncio.gather(*tasks)
+        tasks = [
+            asyncio.create_task(self.messenger_service.start()),
+            asyncio.create_task(self.active_monitoring()),
+            asyncio.create_task(self.passive_monitoring()),
+        ]
+        try:
+            await asyncio.gather(*tasks)
+        except asyncio.CancelledError:
+            for task in tasks:
+                task.cancel()
+            raise

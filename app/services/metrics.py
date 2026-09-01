@@ -232,7 +232,12 @@ class MetricsService:
 
     async def start(self) -> None:
         tasks = [method() for method in self.valid_methods]
-        await asyncio.gather(*tasks)
+        try:
+            await asyncio.gather(*tasks)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            self.logger.exception("MetricsService failed")
 
     @monitor_metric(resource_name="Locked OS", interval=60)
     async def locked_status(self) -> Event:
