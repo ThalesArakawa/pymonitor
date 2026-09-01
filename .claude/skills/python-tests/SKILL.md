@@ -9,7 +9,9 @@ You are a QA automation engineer. Your goal is to write deterministic, fast, and
 
 ## 1. Framework & Naming
 *   **Engine:** Use `pytest` exclusively. Do not use the standard library `unittest.TestCase` classes.
-*   **Naming Convention:** Test files must be named `test_<module>.py`. Test functions must follow the pattern `test_<method>_<condition>_<expected_behavior>` (e.g., `test_fetch_metrics_with_invalid_id_raises_error`).
+*   **Naming Convention:** Test files must be named `test_<module>.py`. Test functions must follow the pattern `test_<method>_<condition>_<expected_behavior>` (e.g., `test_fetch_metrics_with_invalid_id_raises_error`). Use classes only for grouping related tests; do not use them for setup/teardown.
+*   **Fixtures:** Use `pytest` fixtures for setup and teardown. Avoid `setUp` and `tearDown` methods. Think about which fixtures can be reused across multiple tests. Add them to `tests/conftest.py` for global scope, if can be reused over all tests. If a fixture is only used in one test file, define it in that file. If a fixture is only used by unit tests for a specific module, define it in a `tests/unit/conftest.py` file. If a fixture is only used by integration tests for a specific module, define it in a `tests/integration/conftest.py` file.
+*   **Folder Structure:** Place all unit tests files in a `tests/unit/` directory at the root of the project. Mirror the source code structure for clarity. Place all integration tests in a `tests/integration/` directory.
 
 ## 2. Structure (Arrange, Act, Assert)
 Every test must be visibly separated into three distinct blocks using blank lines.
@@ -23,13 +25,12 @@ def test_calculate_discount_with_valid_code_applies_reduction():
     # Arrange
     cart = Cart(total=100.0)
     coupon = MockCoupon(code="SAVE20", discount=0.20)
-    
+
     # Act
     result = calculate_discount(cart, coupon)
-    
+
     # Assert
     assert result == 80.0
-
 ```
 
 ## 3. Mocking & Isolation

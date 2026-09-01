@@ -35,9 +35,11 @@ Follow existing patterns:
 ```python
 def restart_tobii_service(self, event: Event) -> bool:
     # Synchronous, called via to_thread from take_action
-    for svc in [self.settings.tobii.service_name,
-                self.settings.tobii.generic_name,
-                self.settings.tobii.eyetracker_name]:
+    for svc in [
+        self.settings.tobii.service_name,
+        self.settings.tobii.generic_name,
+        self.settings.tobii.eyetracker_name,
+    ]:
         subprocess.run(["sc", "stop", svc], creationflags=CREATE_NO_WINDOW)
         subprocess.run(["sc", "start", svc], creationflags=CREATE_NO_WINDOW)
     return True  # or check returncodes

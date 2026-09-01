@@ -25,7 +25,6 @@ def fetch_metrics(service_id: str, retries: int = 3) -> dict:
     Raises:
         ConnectionError: If the service is unreachable after retries.
     """
-
 ```
 
 ## 2. ProperDocs & Markdown Structure

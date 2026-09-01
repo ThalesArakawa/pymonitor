@@ -13,8 +13,8 @@ What happens (`main.py:8`):
 
 ```python
 async def main():
-    settings = get_settings()          # pydantic-settings from .env
-    logger = get_logger()              # RotatingFileHandler app.log
+    settings = get_settings()  # pydantic-settings from .env
+    logger = get_logger()  # RotatingFileHandler app.log
     event_queue = asyncio.Queue()
     # Wiring
     metrics = MetricsService()
@@ -22,7 +22,7 @@ async def main():
     agent = PyAgent(messenger)
     state = StateManager()
     monitor = PyMonitor(metrics, agent, event_queue, state)
-    await monitor.start()              # gather( metrics.start(), agent.start() )
+    await monitor.start()  # gather( metrics.start(), agent.start() )
 ```
 
 * `MetricsService.start()` launches 7 pollers (`gather` on `@monitor_metric` methods).

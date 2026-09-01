@@ -15,7 +15,7 @@ async def main() -> None:
     logger.info(f"Configuração: {settings}")
 
     pymonitor = PyMonitor(
-        metric_collector=MetricsService(),
+        metric_collector=MetricsService(settings=settings, logger=logger),
         agent=PyAgent(messenger=MessengerService()),
         event_queue=asyncio.Queue(),
         database_connector=StateManager(),

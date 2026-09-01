@@ -38,11 +38,11 @@ pymonitor/
 settings = get_settings()
 event_queue = asyncio.Queue()
 state = StateManager()
-metrics = MetricsService()            # 7 infinite pollers
-messenger = MessengerService()        # -> TelegramInterface if USE_TELEGRAM
-agent = PyAgent(messenger)            # queues + alarm
+metrics = MetricsService()  # 7 infinite pollers
+messenger = MessengerService()  # -> TelegramInterface if USE_TELEGRAM
+agent = PyAgent(messenger)  # queues + alarm
 monitor = PyMonitor(metrics, agent, event_queue, state)
-await monitor.start()                 # gather(metrics.start(), agent.start())
+await monitor.start()  # gather(metrics.start(), agent.start())
 ```
 
 `PyMonitor._initialize()` (`app/services/pymonitor.py:10`):

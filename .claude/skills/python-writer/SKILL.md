@@ -30,11 +30,10 @@ Every function, method, and variable must have strict type hints.
 ```python
 class PyAgent:
     def __init__(self):
-        self.logger = FileLogger() # Hardcoded dependency
-        
+        self.logger = FileLogger()  # Hardcoded dependency
+
     def execute(self):
         self.logger.log("Executing...")
-
 ```
 
 **Good (Decoupled via Protocol):**
@@ -42,16 +41,17 @@ class PyAgent:
 ```python
 from typing import Protocol
 
+
 class Logger(Protocol):
     def log(self, message: str) -> None: ...
 
+
 class PyAgent:
     def __init__(self, logger: Logger) -> None:
-        self.logger = logger # Injected dependency
-        
+        self.logger = logger  # Injected dependency
+
     def execute(self) -> None:
         self.logger.log("Executing...")
-
 ```
 
 ## 5. Verification & Linting

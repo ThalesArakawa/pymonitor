@@ -76,11 +76,19 @@ class DataBaseConnector(ABC):
     def get(self, key: str) -> Event: ...
     def get_all(self) -> dict[str, Event]: ...
 
+
 class StateManager(DataBaseConnector):
-    def __init__(self): self.state = {}
-    def update_state(self, key, content): self.state[key] = content
-    def get(self, key): return self.state.get(key, Event(message="", status=None))
-    def get_all(self): return self.state
+    def __init__(self):
+        self.state = {}
+
+    def update_state(self, key, content):
+        self.state[key] = content
+
+    def get(self, key):
+        return self.state.get(key, Event(message="", status=None))
+
+    def get_all(self):
+        return self.state
 ```
 
 * **Why in-memory?** PyMonitor is a single Windows process. Persistence would require file/DB I/O and migration; the current design restarts fresh on each launch and immediately re-emits the current state (because `get` miss -> `status=None` never equals `True/False`).

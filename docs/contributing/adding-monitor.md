@@ -13,6 +13,7 @@ from ..models import Event
 from .log import get_logger
 from .metrics import monitor_metric  # the decorator
 
+
 class MetricsService:
     # ... existing 7 monitors ...
 
@@ -52,6 +53,7 @@ def monitor_metric(resource_name, interval=5.0):
                     self.state_tracker.update_state(resource_name, event)
                     await self.event_queue.put(event)
                 await asyncio.sleep(get_settings().monitoring.check_interval)
+
         wrapper._is_monitor = True
         return wrapper
 ```
@@ -87,14 +89,23 @@ Run `uv run properdocs serve` to verify docs render.
 ```python
 import shutil
 
+
 @monitor_metric(resource_name="DiskSpace", interval=60)
 async def disk_space_status(self) -> Event:
     usage = shutil.disk_usage("/")
     percent_free = (usage.free / usage.total) * 100
     if percent_free > 10:
-        return Event(message=f"Disk OK ({percent_free:.1f}% free)", status=True, value=percent_free)
+        return Event(
+            message=f"Disk OK ({percent_free:.1f}% free)",
+            status=True,
+            value=percent_free,
+        )
     else:
-        return Event(message=f"Disk LOW ({percent_free:.1f}% free)", status=False, value=percent_free)
+        return Event(
+            message=f"Disk LOW ({percent_free:.1f}% free)",
+            status=False,
+            value=percent_free,
+        )
 ```
 
 * `value` can carry the free percent for downstream use (logging, future Telegram formatting).

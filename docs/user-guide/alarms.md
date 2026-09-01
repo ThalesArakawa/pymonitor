@@ -29,7 +29,10 @@ async def on_failure(self, audio: Path, resource_name: str):
     while not self.alarm_state[resource_name].is_set():
         await asyncio.to_thread(playsound3.playsound, str(audio), False)
         try:
-            await asyncio.wait_for(self.alarm_state[resource_name].wait(), timeout=self.settings.alarm.interval)
+            await asyncio.wait_for(
+                self.alarm_state[resource_name].wait(),
+                timeout=self.settings.alarm.interval,
+            )
         except asyncio.TimeoutError:
             continue  # replay
 ```
