@@ -1,27 +1,90 @@
 import asyncio
+import logging
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, Protocol
 
 import aiofiles
 import cv2
 
 from ..models import Event, Message, Request
-from ..settings import get_settings
+from ..settings import AppSettings, get_settings
 from .alarm import AlarmService
 from .database import DataBaseConnector
 from .log import get_logger
 from .messenger import MessengerService
 
 
+class WebcamOpenError(RuntimeError):
+    """Raised when webcam device cannot be opened."""
+
+
+class FrameCaptureError(RuntimeError):
+    """Raised when frame capture fails."""
+
+
+class ImageEncodeError(RuntimeError):
+    """Raised when JPEG encoding fails."""
+
+
+class VideoCaptureProtocol(Protocol):
+    def isOpened(self) -> bool: ...
+
+    def read(self) -> tuple[bool, Any]: ...
+
+    def release(self) -> None: ...
+
+
+CaptureFactory = Callable[[int], VideoCaptureProtocol]
+
+
+def _open_capture(factory: CaptureFactory, device_index: int) -> VideoCaptureProtocol:
+    """Create capture device or raise WebcamOpenError."""
+    capture = factory(device_index)
+    if not capture.isOpened():
+        try:
+            capture.release()
+        except OSError:
+            pass
+        raise WebcamOpenError(f"Could not open webcam index {device_index}.")
+    return capture
+
+
+def _read_frame(capture: VideoCaptureProtocol) -> Any:
+    """Read single frame or raise FrameCaptureError."""
+    succeeded, frame = capture.read()
+    if not succeeded or frame is None:
+        raise FrameCaptureError("Failed to capture frame.")
+    return frame
+
+
+def _encode_jpeg(frame: Any) -> bytes:
+    """Encode frame to JPEG bytes or raise ImageEncodeError."""
+    success, buffer = cv2.imencode(".jpeg", frame)
+    if not success or buffer is None:
+        raise ImageEncodeError("Could not encode image.")
+    return bytes(buffer.tobytes())
+
+
 class PyAgent:
-    def __init__(self, messenger: MessengerService):
-        self.logger = get_logger()
-        self.settings = get_settings()
-        self.event_queue: asyncio.Queue | None = []
-        self.request_queue: asyncio.Queue = asyncio.Queue()
+    def __init__(
+        self,
+        messenger: MessengerService,
+        settings: AppSettings | None = None,
+        logger: logging.Logger | None = None,
+        capture_factory: CaptureFactory | None = None,
+    ) -> None:
+        self.logger: logging.Logger = logger or get_logger()
+        self.settings: AppSettings = settings or get_settings()
+        self.event_queue: asyncio.Queue[Any] | None = None
+        self.request_queue: asyncio.Queue[Any] = asyncio.Queue()
         self.state_tracker: DataBaseConnector | None = None
         self.messenger_service: MessengerService = messenger
         self.alarm_service: AlarmService = AlarmService()
+        self._capture_factory: CaptureFactory = capture_factory or (
+            lambda idx: cv2.VideoCapture(idx)
+        )
         self.messenger_service.initialize(queue=self.request_queue)
 
     def set_event_queue(self, queue: asyncio.Queue):
@@ -30,33 +93,29 @@ class PyAgent:
     def set_state_tracker(self, database_connector: DataBaseConnector):
         self.state_tracker = database_connector
 
-    def get_photo(self):
-        # Initialize the webcam (0 represents the default camera)
-        cap = cv2.VideoCapture(0)
-
-        # Check if the webcam opened successfully
-        if not cap.isOpened():
-            self.logger.error("Error: Could not open webcam.")
-            photo = None
-
-        # Capture a single frame
-        ret, frame = cap.read()
-        cap.release()
-        # Check if the frame was captured successfully
-        if ret:
-            # Display the captured frame (optional)
-            is_success, buffer = cv2.imencode(".jpeg", frame)
-            if not is_success:
-                self.logger.error("Error: Could not encode image.")
-                return None
-
-            # Save the captured frame as an image file
-            photo = buffer.tobytes()
-
-        else:
-            self.logger.error("Error: Failed to capture frame.")
-
-        return photo
+    async def get_photo(self) -> bytes | None:
+        """Capture photo without blocking the event loop."""
+        capture: VideoCaptureProtocol | None = None
+        try:
+            capture = await asyncio.to_thread(_open_capture, self._capture_factory, 0)
+            frame = await asyncio.to_thread(_read_frame, capture)
+            photo = await asyncio.to_thread(_encode_jpeg, frame)
+            return photo
+        except WebcamOpenError as exc:
+            self.logger.error(f"Webcam unavailable: {exc}")
+            return None
+        except FrameCaptureError as exc:
+            self.logger.error(f"Frame capture failed: {exc}")
+            return None
+        except ImageEncodeError as exc:
+            self.logger.error(f"Image encode failed: {exc}")
+            return None
+        finally:
+            if capture is not None:
+                try:
+                    await asyncio.to_thread(capture.release)
+                except OSError as exc:
+                    self.logger.error(f"Failed to release capture: {exc}")
 
     async def get_log(self) -> bytes:
         try:
@@ -70,11 +129,12 @@ class PyAgent:
 
         return log
 
-    async def respond(self, request: Request):
+    async def respond(self, request: Request) -> Message:
         if request.message == "photo":
+            photo = await self.get_photo()
             return Message(
                 content="Aqui está a foto da WebCam:",
-                byte_content=self.get_photo(),
+                byte_content=photo,
                 recipient=request.update,
                 type="photo",
             )
