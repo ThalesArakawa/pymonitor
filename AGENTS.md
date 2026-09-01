@@ -47,9 +47,5 @@ Required `.env` setup:
 - **Assets**: Alarm sounds reside in the `assets/` directory.
 
 ## Documentation
-- **Engine**: ProperDocs 
-- **Commands**: 
-  - Preview locally: `uv run properdocs serve`
-  - Build static site: `uv run properdocs build`
-- **Location**: All documentation source files are in the `docs/` directory. The main configuration is `properdocs.yml`.
-- **Rule**: When adding a new monitor to `MetricsService` or a new action to `PyAgent`, you must update the corresponding Markdown file in `docs/` to reflect the changes.
+- **Engine:** ProperDocs (`uv run properdocs serve` / `uv run properdocs build`)
+- **Skill Trigger:** Whenever you write code comments, modify `MetricsService`, update `PyAgent`, or touch the `docs/` folder, you MUST read and follow the `.claude/skills/python-docs/SKILL.md` ruleset.
