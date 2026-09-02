@@ -39,6 +39,7 @@ plugins:
   - kroki:
       server_url: http://localhost:8080
       fail_fast: false
+      img_src: 'data'
 
 markdown_extensions:
   - pymdownx.snippets:

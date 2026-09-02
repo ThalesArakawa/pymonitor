@@ -1,4 +1,5 @@
 import asyncio
+import types
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import psutil
@@ -20,6 +21,7 @@ from app.services.metrics import (
     _is_service_running,
     _query_wmi_devices,
     _resolve_interval,
+    monitor_metric,
 )
 
 # ---------------------------------------------------------------------------
@@ -36,34 +38,41 @@ def test_collect_process_names_with_valid_iter_returns_set():
     proc_c = MagicMock()
     proc_c.info = {"name": None}
 
+    # Act
     with patch(
         "app.services.metrics.psutil.process_iter",
         return_value=[proc_a, proc_b, proc_c],
     ):
-        # Act
         result = _collect_process_names()
 
-        # Assert
-        assert result == {"OptiKey.exe", "AnyDesk.exe"}
+    # Assert
+    assert result == {"OptiKey.exe", "AnyDesk.exe"}
 
 
 def test_collect_process_names_with_access_denied_raises_process_lookup_error():
     # Arrange
-    with patch(
-        "app.services.metrics.psutil.process_iter",
-        side_effect=psutil.AccessDenied(pid=123),
-    ):
-        # Act / Assert
+    patch_target = "app.services.metrics.psutil.process_iter"
+
+    # Act & Assert
+    with patch(patch_target, side_effect=psutil.AccessDenied(pid=123)):
         with pytest.raises(ProcessLookupError):
             _collect_process_names()
+
+    # Assert
+    # Exception propagated as ProcessLookupError (verified by pytest.raises).
 
 
 def test_collect_process_names_with_os_error_raises_process_lookup_error():
     # Arrange
-    with patch("app.services.metrics.psutil.process_iter", side_effect=OSError("fail")):
-        # Act / Assert
+    patch_target = "app.services.metrics.psutil.process_iter"
+
+    # Act & Assert
+    with patch(patch_target, side_effect=OSError("fail")):
         with pytest.raises(ProcessLookupError):
             _collect_process_names()
+
+    # Assert
+    # Exception propagated as ProcessLookupError (verified by pytest.raises).
 
 
 def test_get_network_states_with_valid_stats_returns_tuple():
@@ -72,63 +81,78 @@ def test_get_network_states_with_valid_stats_returns_tuple():
     wifi = MagicMock(isup=False)
     fake_stats = {"Ethernet": eth, "Wi-Fi": wifi}
 
+    # Act
     with patch("app.services.metrics.psutil.net_if_stats", return_value=fake_stats):
-        # Act
         ethernet, wifi_state = _get_network_states()
 
-        # Assert
-        assert ethernet is eth
-        assert wifi_state is wifi
+    # Assert
+    assert ethernet is eth
+    assert wifi_state is wifi
 
 
 def test_get_network_states_with_os_error_raises_network_lookup_error():
     # Arrange
-    with patch("app.services.metrics.psutil.net_if_stats", side_effect=OSError("down")):
-        # Act / Assert
+    patch_target = "app.services.metrics.psutil.net_if_stats"
+
+    # Act & Assert
+    with patch(patch_target, side_effect=OSError("down")):
         with pytest.raises(NetworkLookupError):
             _get_network_states()
+
+    # Assert
+    # Exception propagated as NetworkLookupError (verified by pytest.raises).
 
 
 def test_get_battery_stats_with_valid_data_returns_stats():
     # Arrange
     fake_battery = MagicMock(power_plugged=True, percent=80)
 
+    # Act
     with patch(
         "app.services.metrics.psutil.sensors_battery", return_value=fake_battery
     ):
-        # Act
         result = _get_battery_stats()
 
-        # Assert
-        assert result is fake_battery
+    # Assert
+    assert result is fake_battery
 
 
 def test_get_battery_stats_with_os_error_raises_battery_lookup_error():
     # Arrange
-    with patch(
-        "app.services.metrics.psutil.sensors_battery", side_effect=OSError("no battery")
-    ):
-        # Act / Assert
+    patch_target = "app.services.metrics.psutil.sensors_battery"
+
+    # Act & Assert
+    with patch(patch_target, side_effect=OSError("no battery")):
         with pytest.raises(BatteryLookupError):
             _get_battery_stats()
+
+    # Assert
+    # Exception propagated as BatteryLookupError (verified by pytest.raises).
 
 
 def test_get_battery_stats_with_none_returns_none():
     # Arrange
-    with patch("app.services.metrics.psutil.sensors_battery", return_value=None):
-        # Act
+    patch_target = "app.services.metrics.psutil.sensors_battery"
+
+    # Act
+    with patch(patch_target, return_value=None):
         result = _get_battery_stats()
 
-        # Assert
-        assert result is None
+    # Assert
+    assert result is None
 
 
-def test_query_wmi_devices_when_module_missing_raises_wmi_unavailable():
+def test_query_wmi_devices_with_missing_module_raises_wmi_unavailable():
     # Arrange
-    with patch("app.services.metrics.wmi_module", None):
-        # Act / Assert
+    patch_target = "app.services.metrics.wmi_module"
+
+    # Act & Assert
+    with patch(patch_target, None):
         with pytest.raises(WMIUnavailableError, match="unavailable on this platform"):
             _query_wmi_devices()
+
+    # Assert
+    # Exception propagated as WMIUnavailableError (verified by pytest.raises).
 
 
 def test_query_wmi_devices_with_valid_devices_returns_list():
@@ -140,14 +164,14 @@ def test_query_wmi_devices_with_valid_devices_returns_list():
     fake_wmi = MagicMock()
     fake_wmi.WMI.return_value = fake_conn
 
+    # Act
     with patch("app.services.metrics.wmi_module", fake_wmi):
-        # Act
         result = _query_wmi_devices()
 
-        # Assert
-        assert result == [device]
-        fake_wmi.WMI.assert_called_once()
-        fake_conn.Win32_PnPEntity.assert_called_once()
+    # Assert
+    assert result == [device]
+    fake_wmi.WMI.assert_called_once()
+    fake_conn.Win32_PnPEntity.assert_called_once()
 
 
 def test_query_wmi_devices_with_os_error_raises_wmi_unavailable():
@@ -155,10 +179,13 @@ def test_query_wmi_devices_with_os_error_raises_wmi_unavailable():
     fake_wmi = MagicMock()
     fake_wmi.WMI.side_effect = OSError("COM failed")
 
+    # Act & Assert
     with patch("app.services.metrics.wmi_module", fake_wmi):
-        # Act / Assert
         with pytest.raises(WMIUnavailableError):
             _query_wmi_devices()
+
+    # Assert
+    # Exception propagated as WMIUnavailableError (verified by pytest.raises).
 
 
 def test_is_service_running_with_running_service_returns_true():
@@ -166,16 +193,16 @@ def test_is_service_running_with_running_service_returns_true():
     fake_service = MagicMock()
     fake_service.as_dict.return_value = {"status": "running"}
 
+    # Act
     with patch(
         "app.services.metrics.psutil.win_service_get",
         return_value=fake_service,
         create=True,
     ):
-        # Act
         result = _is_service_running("Tobii Service")
 
-        # Assert
-        assert result is True
+    # Assert
+    assert result is True
 
 
 def test_is_service_running_with_stopped_service_returns_false():
@@ -183,42 +210,41 @@ def test_is_service_running_with_stopped_service_returns_false():
     fake_service = MagicMock()
     fake_service.as_dict.return_value = {"status": "stopped"}
 
+    # Act
     with patch(
         "app.services.metrics.psutil.win_service_get",
         return_value=fake_service,
         create=True,
     ):
-        # Act
         result = _is_service_running("Tobii Service")
 
-        # Assert
-        assert result is False
+    # Assert
+    assert result is False
 
 
-def test_is_service_running_with_no_such_process_returns_false():
+def test_is_service_running_with_missing_service_returns_false():
     # Arrange
-    with patch(
-        "app.services.metrics.psutil.win_service_get",
-        side_effect=psutil.NoSuchProcess(pid=999),
-        create=True,
-    ):
-        # Act
+    patch_target = "app.services.metrics.psutil.win_service_get"
+
+    # Act
+    with patch(patch_target, side_effect=psutil.NoSuchProcess(pid=999), create=True):
         result = _is_service_running("Missing Service")
 
-        # Assert
-        assert result is False
+    # Assert
+    assert result is False
 
 
 def test_is_service_running_with_os_error_raises_service_lookup_error():
     # Arrange
-    with patch(
-        "app.services.metrics.psutil.win_service_get",
-        side_effect=OSError("scm"),
-        create=True,
-    ):
-        # Act / Assert
+    patch_target = "app.services.metrics.psutil.win_service_get"
+
+    # Act & Assert
+    with patch(patch_target, side_effect=OSError("scm"), create=True):
         with pytest.raises(ServiceLookupError):
             _is_service_running("Tobii Service")
+
+    # Assert
+    # Exception propagated as ServiceLookupError (verified by pytest.raises).
 
 
 def test_format_tobii_summary_with_all_up_returns_true_and_message():
@@ -368,20 +394,23 @@ async def test_collect_and_emit_with_os_error_logs_exception():
 
 
 def test_metrics_service_init_with_injected_dependencies_sets_attributes(
-    metrics_service,
+    metrics_service: MetricsService,
 ):
-    # Arrange - done via fixture
-
-    # Act
+    # Arrange
     service = metrics_service
 
+    # Act
+    check_interval = service.settings.monitoring.check_interval
+    logger = service.logger
+    valid_count = len(service.valid_methods)
+
     # Assert
-    assert service.settings.monitoring.check_interval == 10
-    assert service.logger is not None
-    assert len(service.valid_methods) == 7
+    assert check_interval == 10
+    assert logger is not None
+    assert valid_count == 7
 
 
-def test_metrics_service_set_event_queue_assigns_queue(metrics_service, event_queue):
+def test_set_event_queue_with_valid_queue_assigns_queue(metrics_service, event_queue):
     # Arrange
     service = metrics_service
 
@@ -392,7 +421,7 @@ def test_metrics_service_set_event_queue_assigns_queue(metrics_service, event_qu
     assert service.event_queue is event_queue
 
 
-def test_metrics_service_set_state_tracker_assigns_tracker(
+def test_set_state_tracker_with_valid_tracker_assigns_tracker(
     metrics_service, state_manager
 ):
     # Arrange
@@ -405,7 +434,9 @@ def test_metrics_service_set_state_tracker_assigns_tracker(
     assert service.state_tracker is state_manager
 
 
-def test_metrics_service_setup_discovers_decorated_methods(metrics_service):
+def test_metrics_service_setup_with_decorated_methods_discovers_all(
+    metrics_service,
+):
     # Arrange
     service = metrics_service
 
@@ -426,22 +457,22 @@ def test_metrics_service_setup_discovers_decorated_methods(metrics_service):
 
 
 @pytest.mark.asyncio
-async def test_metrics_service_start_invokes_all_methods(metrics_service_with_queue):
+async def test_metrics_service_start_with_registered_methods_invokes_gather(
+    metrics_service_with_queue,
+):
     # Arrange
     service = metrics_service_with_queue
 
-    # Patch asyncio.gather to avoid infinite loops
+    # Act
     with patch(
         "app.services.metrics.asyncio.gather", new_callable=AsyncMock
     ) as mock_gather:
         mock_gather.return_value = None
 
-        # Act
         await service.start()
 
         # Assert
         mock_gather.assert_awaited_once()
-        # Gather called with 7 coroutines (splat args)
         assert len(mock_gather.call_args.args) == 7
 
         # Cleanup: close unawaited coroutines to silence RuntimeWarning
@@ -461,18 +492,17 @@ async def test_locked_status_with_logonui_present_returns_locked_event(
     # Arrange
     service = metrics_service_with_queue
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.return_value = {"LogonUI.exe", "explorer.exe"}
-
-        # Act
         event = await service.locked_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is False
-        assert "BLOQUEADA" in event.message
-        mock_to_thread.assert_awaited_once()
+    # Assert
+    assert event.status is False
+    assert "BLOQUEADA" in event.message
+    mock_to_thread.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -482,17 +512,16 @@ async def test_locked_status_without_logonui_returns_unlocked_event(
     # Arrange
     service = metrics_service_with_queue
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.return_value = {"explorer.exe"}
-
-        # Act
         event = await service.locked_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is True
-        assert "desbloqueada" in event.message
+    # Assert
+    assert event.status is True
+    assert "desbloqueada" in event.message
 
 
 @pytest.mark.asyncio
@@ -502,17 +531,16 @@ async def test_optikey_status_with_process_present_returns_open(
     # Arrange
     service = metrics_service_with_queue
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.return_value = {"OptiKey.exe"}
-
-        # Act
         event = await service.optikey_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is True
-        assert "Aberto" in event.message
+    # Assert
+    assert event.status is True
+    assert "Aberto" in event.message
 
 
 @pytest.mark.asyncio
@@ -522,17 +550,16 @@ async def test_optikey_status_with_missing_process_returns_closed(
     # Arrange
     service = metrics_service_with_queue
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.return_value = set()
-
-        # Act
         event = await service.optikey_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is False
-        assert "Fechado" in event.message
+    # Assert
+    assert event.status is False
+    assert "Fechado" in event.message
 
 
 @pytest.mark.asyncio
@@ -542,16 +569,15 @@ async def test_anydesk_status_with_process_present_returns_open(
     # Arrange
     service = metrics_service_with_queue
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.return_value = {"AnyDesk.exe"}
-
-        # Act
         event = await service.anydesk_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is True
+    # Assert
+    assert event.status is True
 
 
 @pytest.mark.asyncio
@@ -563,17 +589,16 @@ async def test_network_status_with_ethernet_up_returns_connected(
     eth = MagicMock(isup=True)
     wifi = MagicMock(isup=False)
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.return_value = (eth, wifi)
-
-        # Act
         event = await service.network_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is True
-        assert "Conectado" in event.message
+    # Assert
+    assert event.status is True
+    assert "Conectado" in event.message
 
 
 @pytest.mark.asyncio
@@ -585,17 +610,16 @@ async def test_network_status_with_all_down_returns_disconnected(
     eth = MagicMock(isup=False)
     wifi = MagicMock(isup=False)
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.return_value = (eth, wifi)
-
-        # Act
         event = await service.network_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is False
-        assert "NÃO CONECTADO" in event.message
+    # Assert
+    assert event.status is False
+    assert "NÃO CONECTADO" in event.message
 
 
 @pytest.mark.asyncio
@@ -605,18 +629,17 @@ async def test_charger_status_with_no_battery_returns_none_status(
     # Arrange
     service = metrics_service_with_queue
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.return_value = None
-
-        # Act
         event = await service.charger_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is None
-        assert event.value is None
-        assert "not available" in event.message
+    # Assert
+    assert event.status is None
+    assert event.value is None
+    assert "not available" in event.message
 
 
 @pytest.mark.asyncio
@@ -627,18 +650,17 @@ async def test_charger_status_with_plugged_battery_returns_true(
     service = metrics_service_with_queue
     battery = MagicMock(power_plugged=True, percent=85)
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.return_value = battery
-
-        # Act
         event = await service.charger_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is True
-        assert event.value == 85
-        assert "Conectada" in event.message
+    # Assert
+    assert event.status is True
+    assert event.value == 85
+    assert "Conectada" in event.message
 
 
 @pytest.mark.asyncio
@@ -649,16 +671,15 @@ async def test_charger_status_with_unplugged_battery_returns_false(
     service = metrics_service_with_queue
     battery = MagicMock(power_plugged=False, percent=42)
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.return_value = battery
-
-        # Act
         event = await service.charger_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is False
+    # Assert
+    assert event.status is False
 
 
 @pytest.mark.asyncio
@@ -670,17 +691,16 @@ async def test_tobii_hardware_status_with_tobii_device_returns_connected(
     device = MagicMock()
     device.Name = "Tobii Eye Tracker 5"
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.return_value = [device]
-
-        # Act
         event = await service.tobii_hardware_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is True
-        assert "conectado" in event.message
+    # Assert
+    assert event.status is True
+    assert "conectado" in event.message
 
 
 @pytest.mark.asyncio
@@ -692,16 +712,15 @@ async def test_tobii_hardware_status_with_no_tobii_returns_disconnected(
     device = MagicMock()
     device.Name = "USB Input Device"
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.return_value = [device]
-
-        # Act
         event = await service.tobii_hardware_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is False
+    # Assert
+    assert event.status is False
 
 
 @pytest.mark.asyncio
@@ -710,11 +729,11 @@ async def test_check_tobii_status_with_all_up_returns_ok(
 ):
     # Arrange
     service = metrics_service_with_queue
-    # First to_thread call returns process names, subsequent calls are service checks
+
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
-        # Call sequence: _collect_process_names, then 3x _is_service_running
         mock_to_thread.side_effect = [
             {
                 "Tobii.EyeX.Engine.exe",
@@ -725,14 +744,12 @@ async def test_check_tobii_status_with_all_up_returns_ok(
             True,
             True,
         ]
-
-        # Act
         event = await service.check_tobii_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is True
-        assert "UP" in event.message
-        assert mock_to_thread.await_count == 4
+    # Assert
+    assert event.status is True
+    assert "UP" in event.message
+    assert mock_to_thread.await_count == 4
 
 
 @pytest.mark.asyncio
@@ -742,22 +759,21 @@ async def test_check_tobii_status_with_missing_exe_returns_not_ok(
     # Arrange
     service = metrics_service_with_queue
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.to_thread", new_callable=AsyncMock
     ) as mock_to_thread:
         mock_to_thread.side_effect = [
-            set(),  # no tobii exes
+            set(),
             False,
             False,
             False,
         ]
-
-        # Act
         event = await service.check_tobii_status.__wrapped__(service)
 
-        # Assert
-        assert event.status is False
-        assert "DOWN" in event.message
+    # Assert
+    assert event.status is False
+    assert "DOWN" in event.message
 
 
 # ---------------------------------------------------------------------------
@@ -779,25 +795,20 @@ async def test_monitor_metric_with_custom_interval_uses_custom_sleep(
 
     call_count = 0
 
-    @__import__("app.services.metrics", fromlist=["monitor_metric"]).monitor_metric(
-        resource_name="Test", interval=60
-    )
+    @monitor_metric(resource_name="Test", interval=60)
     async def dummy_metric(self) -> Event:
         nonlocal call_count
         call_count += 1
         return Event(message="ok", status=True)
 
-    # Bind as method
-    import types
-
     service.dummy_metric = types.MethodType(dummy_metric, service)
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.sleep", new_callable=AsyncMock
     ) as mock_sleep:
         mock_sleep.side_effect = [None, asyncio.CancelledError]
 
-        # Act
         try:
             await service.dummy_metric()
         except asyncio.CancelledError:
@@ -822,22 +833,18 @@ async def test_monitor_metric_with_no_interval_uses_fallback_check_interval(
     service.set_event_queue(queue)
     service.set_state_tracker(tracker)
 
-    @__import__("app.services.metrics", fromlist=["monitor_metric"]).monitor_metric(
-        resource_name="Fallback"
-    )
+    @monitor_metric(resource_name="Fallback")
     async def dummy_metric(self) -> Event:
         return Event(message="ok", status=True)
 
-    import types
-
     service.dummy_metric = types.MethodType(dummy_metric, service)
 
+    # Act
     with patch(
         "app.services.metrics.asyncio.sleep", new_callable=AsyncMock
     ) as mock_sleep:
         mock_sleep.side_effect = [None, asyncio.CancelledError]
 
-        # Act
         try:
             await service.dummy_metric()
         except asyncio.CancelledError:

@@ -1,17 +1,16 @@
-import asyncio
+"""Global fixtures reused across unit and integration tests."""
+
 import logging
 from unittest.mock import MagicMock
 
 import pytest
 
-from app.models import Event
-from app.services.database import StateManager
-from app.services.metrics import MetricsService
 from app.settings import AppSettings
 
 
 @pytest.fixture
 def mock_logger() -> MagicMock:
+    """Provide a mocked logger with common methods."""
     logger = MagicMock(spec=logging.Logger)
     logger.info = MagicMock()
     logger.debug = MagicMock()
@@ -23,6 +22,7 @@ def mock_logger() -> MagicMock:
 
 @pytest.fixture
 def app_settings() -> AppSettings:
+    """Provide deterministic AppSettings for tests."""
     return AppSettings(
         env="test",
         use_telegram=False,
@@ -45,31 +45,3 @@ def app_settings() -> AppSettings:
         },
         alarm={"interval": 60},
     )
-
-
-@pytest.fixture
-def event_queue() -> asyncio.Queue[Event]:
-    return asyncio.Queue()
-
-
-@pytest.fixture
-def state_manager() -> StateManager:
-    return StateManager()
-
-
-@pytest.fixture
-def metrics_service(
-    app_settings: AppSettings, mock_logger: MagicMock
-) -> MetricsService:
-    return MetricsService(settings=app_settings, logger=mock_logger)
-
-
-@pytest.fixture
-def metrics_service_with_queue(
-    metrics_service: MetricsService,
-    event_queue: asyncio.Queue[Event],
-    state_manager: StateManager,
-) -> MetricsService:
-    metrics_service.set_event_queue(event_queue)
-    metrics_service.set_state_tracker(state_manager)
-    return metrics_service
