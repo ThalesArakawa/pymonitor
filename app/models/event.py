@@ -1,15 +1,16 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Literal, Any, Optional
 from datetime import datetime
+from typing import Any, Literal
 
-type EventStatus = Literal[True, False, None]
+from pydantic import BaseModel, ConfigDict
+
+type EventStatus = Literal[True, False] | None
 
 
 class Event(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
-    event_id: Optional[str | None] = None
+    event_id: str | None = None
     message: str
-    resource_name: Optional[str | None] = None
+    resource_name: str | None = None
     status: EventStatus
-    value: Optional[Any] = None
-    timestamp: Optional[datetime | None] = None
+    value: Any | None = None
+    timestamp: datetime | None = None

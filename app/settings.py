@@ -1,12 +1,13 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import computed_field, Field
-from typing import Literal, Optional
-from functools import cache
-import os
 import logging
 import logging.config
+import os
 import sys
+from functools import cache
 from pathlib import Path
+from typing import Any, ClassVar, Literal
+
+from pydantic import Field, computed_field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 type Env = Literal["test", "dev", "prod"]
 type LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -48,11 +49,12 @@ class MonitoringSettings(BaseSettings):
         10, description="Interval in seconds to check system status"
     )
 
+
 class AlarmSettings(BaseSettings):
     interval: int = 60
 
     def model_post_init(self, context):
-        if self.interval <=0:
+        if self.interval <= 0:
             raise ValueError("Alarm Interval time need to be greater than 0")
 
 
@@ -73,6 +75,8 @@ class AppSettings(BaseSettings):
         nested_model_default_partial_update=True,
     )
 
+    _logging_configured: ClassVar[bool] = False
+
     env: Env = "test"
     use_telegram: bool
     telegram: TelegramSettings
@@ -82,11 +86,11 @@ class AppSettings(BaseSettings):
     monitoring: MonitoringSettings = MonitoringSettings()
     remote_access: RemoteAccessSettings = RemoteAccessSettings()
     log_level: LogLevel = Field("DEBUG", frozen=True)
-    log_format: Optional[str] = (
+    log_format: str | None = (
         "%(asctime)s | %(levelname)s | %(name)s | %(module)s"
         " | %(funcName)s | %(lineno)s | %(message)s"
     )
-    log_date_format: Optional[str] = Field("%Y-%m-%d %H:%M:%S", frozen=True)
+    log_date_format: str | None = Field("%Y-%m-%d %H:%M:%S", frozen=True)
 
     @computed_field
     @property
@@ -149,8 +153,10 @@ class AppSettings(BaseSettings):
             },
         }
 
-    def model_post_init(self, context):
-        logging.config.dictConfig(self.logging_config)
+    def model_post_init(self, context: Any) -> None:
+        if not AppSettings._logging_configured:
+            logging.config.dictConfig(self.logging_config)
+            AppSettings._logging_configured = True
         logging.getLogger("urllib3").setLevel(logging.INFO)
         logging.getLogger("httpcore").setLevel(logging.INFO)
         logging.getLogger("telegram").setLevel(logging.INFO)

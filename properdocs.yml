@@ -1,0 +1,81 @@
+site_name: PyMonitor - Technical Documentation
+theme:
+  name: material
+  language: en
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+    - navigation.top
+    - navigation.tracking
+    - navigation.expand
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - glightbox
+  - mkdocstrings:
+      handlers:
+        python:
+          setup_commands:
+            - import sys
+            - sys.path.append(".")
+  - kroki:
+      server_url: http://localhost:8080
+      fail_fast: false
+      img_src: 'data'
+
+markdown_extensions:
+  - pymdownx.snippets:
+      check_paths: true
+      base_path: ["docs"]
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Configuration: getting-started/configuration.md
+    - Running: getting-started/running.md
+  - User Guide:
+    - Monitors: user-guide/monitors.md
+    - Telegram Commands: user-guide/telegram.md
+    - Alarms: user-guide/alarms.md
+  - Architecture:
+    - Overview & C4: architecture/c4.md
+    - Sequence Flows: architecture/sequence_diagram.md
+    - State & Data: architecture/database.md
+  - Contributing:
+    - Project Structure: contributing/structure.md
+    - Adding a Monitor: contributing/adding-monitor.md
+    - Adding an Action: contributing/adding-action.md
+    - Conventions: contributing/conventions.md
+  - Roadmap: dev/roadmap.md
+  - API Reference: api/core.md
+
+extra_css:
+  - stylesheets/extra.css

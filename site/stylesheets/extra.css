@@ -1,0 +1,87 @@
+/* ==========================================
+   1. ESTILIZAÇÃO DE TABELAS (ROADMAP)
+   ========================================== */
+.md-typeset table:not([class]) {
+    border-radius: 0.4rem;
+    border-collapse: collapse;
+    display: table;
+    width: 100%;
+    overflow: hidden; /* Garante que o border-radius funcione */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: none;
+    margin-bottom: 2rem;
+}
+
+.md-typeset table:not([class]) th {
+    background-color: var(--md-primary-fg-color);
+    color: white;
+    padding: 12px 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+.md-typeset table:not([class]) td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+/* Zebra Striping (Linhas alternadas) */
+.md-typeset table:not([class]) tr:nth-child(even) {
+    background-color: var(--md-default-fg-color--lightest);
+}
+
+/* Efeito de destaque ao passar o mouse na linha */
+.md-typeset table:not([class]) tr:hover {
+    background-color: var(--md-accent-fg-color--transparent);
+    transition: background-color 0.3s;
+}
+
+/* ==========================================
+   2. DIAGRAMAS E IMAGENS (KROKI/PLANTUML)
+   ========================================== */
+.md-content img, .kroki {
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--md-default-fg-color--lightest);
+    margin-top: 1rem;
+    background-color: white; /* Garante visibilidade se o SVG for transparente */
+}
+
+/* Efeito sutil de "levante" ao passar o mouse */
+.md-content img:hover, .kroki:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
+
+/* ==========================================
+   3. SNIPPET "EM CONSTRUÇÃO" (ANIMADO)
+   ========================================== */
+.admonition.warning {
+    border-left-width: 0.5rem !important;
+    border-radius: 8px;
+}
+
+/* Animação de pulso na borda para chamar atenção */
+.admonition.warning {
+    animation: alert-pulse 3s infinite;
+}
+
+@keyframes alert-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 145, 0, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 145, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 145, 0, 0); }
+}
+
+/* ==========================================
+   4. AJUSTES DE CÓDIGO INLINE
+   ========================================== */
+code {
+    background-color: var(--md-accent-fg-color--transparent) !important;
+    color: var(--md-accent-fg-color) !important;
+    border-radius: 4px;
+    padding: 2px 6px !important;
+    font-weight: 500;
+}

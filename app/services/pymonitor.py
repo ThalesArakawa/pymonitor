@@ -1,34 +1,39 @@
+import asyncio
+
+from .database import DataBaseConnector
 from .metrics import MetricsService
 from .pyagent import PyAgent
-from .messenger import MessengerService
-from .database import DataBaseConnector, StateManager
-import asyncio
 
 
 class PyMonitor:
     def __init__(
         self,
-        metric_collector: MetricsService = MetricsService(),
-        agent: PyAgent = PyAgent(),
-        event_queue: asyncio.Queue = asyncio.Queue(),
-        database_connector: DataBaseConnector = StateManager(),
-    ):
+        metric_collector: MetricsService,
+        agent: PyAgent,
+        event_queue: asyncio.Queue,
+        database_connector: DataBaseConnector,
+    ) -> None:
         self.metric_collector = metric_collector
-        self.event_queue = event_queue
+        self.event_queue: asyncio.Queue = event_queue
         self.agent = agent
         self.database_connector = database_connector
-        self.tasks = []
+        self.tasks: list[asyncio.Task[None]] = []
 
-        self._initialize()
-
-    def _initialize(self):
+    def _configure(self) -> None:
         self.metric_collector.set_event_queue(self.event_queue)
         self.metric_collector.set_state_tracker(self.database_connector)
-        self.tasks.append(asyncio.create_task(self.metric_collector.start()))
-
         self.agent.set_event_queue(self.event_queue)
         self.agent.set_state_tracker(self.database_connector)
-        self.tasks.append(asyncio.create_task(self.agent.start()))
 
-    async def start(self):
-        await asyncio.gather(*self.tasks)
+    async def start(self) -> None:
+        self._configure()
+        self.tasks = [
+            asyncio.create_task(self.metric_collector.start()),
+            asyncio.create_task(self.agent.start()),
+        ]
+        try:
+            await asyncio.gather(*self.tasks)
+        except asyncio.CancelledError:
+            for task in self.tasks:
+                task.cancel()
+            raise

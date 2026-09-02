@@ -1,11 +1,12 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Literal, Any, Optional
 from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
 
 
 class Request(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
-    request_id: Optional[str | None] = None
+    request_id: str | None = None
     message: Any
-    timestamp: Optional[datetime | None] = None
+    timestamp: datetime | None = None
     update: Any
