@@ -37,9 +37,10 @@ plugins:
             - import sys
             - sys.path.append(".")
   - kroki:
-      server_url: http://localhost:8080
+      server_url: https://kroki.io/ 
       fail_fast: false
-      img_src: 'data'
+      http_method: POST
+      tag_format: svg
 
 markdown_extensions:
   - pymdownx.snippets:
